@@ -130,6 +130,10 @@ footer{border-top:1px solid var(--line);margin-top:8px;padding:22px 0 48px;font-
   .eq{padding-left:.4em;font-size:1.02em}
 }
 @media (prefers-reduced-motion:reduce){.ph .dev{transition:none}}
+
+.vals .m dd{color:var(--mark)}
+.ctls label.check{display:flex;align-items:center;gap:10px;grid-column:1/-1}
+.nw{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -139,30 +143,31 @@ footer{border-top:1px solid var(--line);margin-top:8px;padding:22px 0 48px;font-
     <div>
       <h1>Datenfusion</h1>
       <p class="lead">Ein Sensor driftet, der andere zittert. Zusammen liefern sie einen Wert, der besser ist als jeder einzelne.</p>
-      <p class="how" id="how">Handy flach halten, Bildschirm nach oben, und langsam nach links und rechts kippen. Danach kurz schütteln.</p>
+      <p class="how" id="how">Handy flach halten, Bildschirm nach oben, und langsam nach links und rechts kippen. Danach kräftig schütteln.</p>
       <div class="row">
         <button type="button" class="btn solid" id="startSensors">Handy-Sensoren starten</button>
         <button type="button" class="btn" id="startSim">Simulation</button>
-        <button type="button" class="btn quiet" id="zero">Auf Beschleunigung nullen</button>
         <button type="button" class="btn quiet" id="shake">Schütteln simulieren</button>
       </div>
       <p class="status" id="status" aria-live="polite"></p>
     </div>
     <div class="phones" aria-label="Neigungswinkel aus drei Quellen">
-      <div class="ph g"><div class="stage"><div class="dev" id="devG"></div></div><b id="angG">0°</b><span>Gyroskop</span></div>
-      <div class="ph a"><div class="stage"><div class="dev" id="devA"></div></div><b id="angA">0°</b><span>Beschleunigung</span></div>
+      <div class="ph g"><div class="stage"><div class="dev" id="devG"></div></div><b id="angG">0°</b><span>nur Gyroskop</span></div>
+      <div class="ph a"><div class="stage"><div class="dev" id="devA"></div></div><b id="angA">0°</b><span>nur Beschleunigung</span></div>
       <div class="ph f"><div class="stage"><div class="dev" id="devF"></div></div><b id="angF">0°</b><span>Fusion</span></div>
     </div>
   </div>
   <figure class="fig hero-plot">
     <canvas class="plot" id="cv-hero" aria-label="Neigungswinkel der letzten 20 Sekunden aus Gyroskop, Beschleunigungssensor und Fusion"></canvas>
+    <canvas class="plot" id="cv-trust" style="margin-top:8px" aria-label="Gewicht des Beschleunigungssensors in der Fusion"></canvas>
+    <dl class="vals"><div class="f"><dt>Vom Filter geschätzte Gyro-Drift</dt><dd id="biasEst"></dd></div><div class="m"><dt>Gewicht Beschleunigung</dt><dd id="trustNow"></dd></div></dl>
     <div class="ctls">
       <label><span><span>Künstliche Gyro-Drift</span> <output id="o-bias"></output></span><input type="range" id="bias" min="0" max="6" step="0.1" value="2"></label>
-      <label><span><span>Zusätzliches Rauschen Beschleunigung</span> <output id="o-anoise"></output></span><input type="range" id="anoise" min="0" max="15" step="0.5" value="0"></label>
-      <label><span><span>Zeitkonstante der Fusion <var>τ</var></span> <output id="o-tau"></output></span><input type="range" id="tau" min="-1.3" max="1" step="0.05" value="0"></label>
+      <label><span><span>Zusätzliches Rauschen Beschleunigung</span> <output id="o-anoise"></output></span><input type="range" id="anoise" min="0" max="10" step="0.5" value="0"></label>
+      <label class="check"><input type="checkbox" id="adapt" checked> Schütteln erkennen und Beschleunigung dann weniger gewichten</label>
     </div>
-    <figcaption><b>Abb. 1</b>Neigungswinkel der letzten 20 Sekunden. Das Gyroskop misst die Drehgeschwindigkeit, der Winkel entsteht durch Aufsummieren und läuft mit der Zeit weg. Der Beschleunigungssensor sieht die Richtung der Schwerkraft und damit den Winkel direkt, wird aber durch jede Bewegung gestört. <span id="simNote"></span></figcaption>
-    <p class="sensor-note">Moderne Handys kalibrieren ihr Gyroskop intern sehr gut. Damit die Drift im Hörsaal sichtbar wird, lässt sich ein künstlicher Offset hinzufügen. Der Zugriff auf die Bewegungssensoren klappt nur auf Mobilgeräten und muss unter iOS bestätigt werden. Kommen keine Daten an, läuft automatisch die Simulation.</p>
+    <figcaption><b>Abb. 1</b>Oben der Neigungswinkel der letzten 20 Sekunden, unten das Gewicht, mit dem der Beschleunigungssensor in die Fusion eingeht. Das Gyroskop misst die Drehgeschwindigkeit; der Winkel entsteht durch Aufsummieren und läuft mit jeder kleinen Abweichung weg. Der Beschleunigungssensor sieht die Schwerkraft und damit den Winkel direkt, wird aber durch jede Bewegung gestört. Die Fusion schätzt die Drift des Gyroskops mit und nimmt den Beschleunigungssensor zurück, sobald er mehr als die Schwerkraft misst. <span id="simNote"></span></figcaption>
+    <p class="sensor-note">Moderne Handys kalibrieren ihr Gyroskop intern sehr gut. Damit die Drift sichtbar wird, lässt sich ein künstlicher Offset dazuschalten; der Filter lernt ihn nach einigen Sekunden. Der Sensorzugriff klappt nur auf Mobilgeräten und muss unter iOS bestätigt werden. Kommen keine Daten an, läuft automatisch die Simulation.</p>
   </figure>
 </header>
 
@@ -173,25 +178,27 @@ footer{border-top:1px solid var(--line);margin-top:8px;padding:22px 0 48px;font-
     <span class="num" aria-hidden="true">1</span>
     <h2 id="h-s1">Zwei Sensoren messen dasselbe</h2>
     <div class="prose">
-      <p>Zwei Abstandssensoren messen dieselbe Entfernung von 100 cm, einer genau, einer ungenau. Der einfache Mittelwert behandelt beide gleich und wird dadurch vom schlechten Sensor verdorben. Besser ist es, jeden Wert mit dem Kehrwert seiner Varianz zu gewichten:</p>
+      <p>Ein Radar und eine Kamera bestimmen die Position desselben Objekts. Das Radar misst die Entfernung genau, die Querposition aber ungenau; bei der Kamera ist es umgekehrt. Der einfache Mittelwert behandelt beide gleich und übernimmt so von jedem Sensor auch dessen Schwäche. Besser ist es, in jeder Richtung jeden Wert mit dem Kehrwert seiner Varianz zu gewichten:</p>
       <div class="eq"><var>x̂</var> = <span class="frac"><span><var>x</var><sub>A</sub>/<var>σ</var><sub>A</sub><sup>2</sup> + <var>x</var><sub>B</sub>/<var>σ</var><sub>B</sub><sup>2</sup></span><span>1/<var>σ</var><sub>A</sub><sup>2</sup> + 1/<var>σ</var><sub>B</sub><sup>2</sup></span></span>,&emsp; <span class="frac"><span>1</span><span><var>σ</var><sup>2</sup></span></span> = <span class="frac"><span>1</span><span><var>σ</var><sub>A</sub><sup>2</sup></span></span> + <span class="frac"><span>1</span><span><var>σ</var><sub>B</sub><sup>2</sup></span></span></div>
-      <p>Die fusionierte Streuung ist immer kleiner als die des besseren Sensors. Selbst ein schlechter Sensor trägt also noch etwas bei, solange man ihn richtig gewichtet.</p>
+      <p>Das Ergebnis ist in jeder Richtung mindestens so genau wie der jeweils bessere Sensor. Ergänzen sich die Sensoren, ist die Fusion in beiden Richtungen genau, obwohl es keiner der beiden allein ist.</p>
     </div>
-    <div class="figs2">
-      <figure class="fig">
-        <canvas class="plot" id="cv-s1" aria-label="Messwerte beider Sensoren, einfacher Mittelwert und gewichtete Fusion über die Zeit"></canvas>
-        <figcaption><b>Abb. 2a</b>Die letzten 10 Sekunden, 20 Messungen pro Sekunde</figcaption>
-      </figure>
-      <figure class="fig">
-        <canvas class="plot" id="cv-s1b" aria-label="Gemessene Streuung der vier Signale als Balken"></canvas>
-        <figcaption><b>Abb. 2b</b>Gemessene Streuung im Zeitfenster; Striche zeigen den theoretischen Wert</figcaption>
-      </figure>
+    <figure class="fig">
+      <canvas class="plot" id="cv-s1" aria-label="Messpunkte von Radar und Kamera, einfacher Mittelwert und Fusion um die wahre Position, mit Streuellipsen"></canvas>
+      <figcaption><b>Abb. 2</b>Die letzten 120 Messungen, die wahre Position liegt im Fadenkreuz. Gestrichelt: Bereich, in dem rund 86 % der Punkte liegen sollten (2<var>σ</var>-Ellipse).</figcaption>
+    </figure>
+    <div class="row" style="margin-top:14px" role="group" aria-label="Voreinstellungen">
+      <button type="button" class="btn" data-s1="komp">Sich ergänzend</button>
+      <button type="button" class="btn" data-s1="besser">Radar überall besser</button>
+      <button type="button" class="btn" data-s1="gleich">Gleich gut</button>
     </div>
     <div class="ctls">
-      <label><span><span>Streuung Sensor A</span> <output id="o-sa"></output></span><input type="range" id="sa" min="0.5" max="15" step="0.5" value="2"></label>
-      <label><span><span>Streuung Sensor B</span> <output id="o-sb"></output></span><input type="range" id="sb" min="0.5" max="15" step="0.5" value="6"></label>
+      <label><span><span>Radar, quer</span> <output id="o-ax"></output></span><input type="range" id="ax" min="0.1" max="3" step="0.05"></label>
+      <label><span><span>Radar, Entfernung</span> <output id="o-ay"></output></span><input type="range" id="ay" min="0.1" max="3" step="0.05"></label>
+      <label><span><span>Kamera, quer</span> <output id="o-bx"></output></span><input type="range" id="bx" min="0.1" max="3" step="0.05"></label>
+      <label><span><span>Kamera, Entfernung</span> <output id="o-by"></output></span><input type="range" id="by" min="0.1" max="3" step="0.05"></label>
     </div>
-    <dl class="vals"><div><dt>Gewicht A</dt><dd id="wA"></dd></div><div><dt>Gewicht B</dt><dd id="wB"></dd></div><div class="f"><dt>Fusion, theoretisch</dt><dd id="sF"></dd></div></dl>
+    <dl class="vals"><div class="a"><dt>Fehler Radar</dt><dd id="r1A"></dd></div><div class="m"><dt>Fehler Kamera</dt><dd id="r1B"></dd></div><div><dt>Fehler Mittelwert</dt><dd id="r1M"></dd></div><div class="f"><dt>Fehler Fusion</dt><dd id="r1F"></dd></div></dl>
+    <p class="note" style="margin-top:14px">Fehler als mittlerer Abstand zur wahren Position über die letzten 120 Messungen.</p>
   </section>
 
   <section class="step" id="s2" aria-labelledby="h-s2">
@@ -200,12 +207,12 @@ footer{border-top:1px solid var(--line);margin-top:8px;padding:22px 0 48px;font-
     <div class="prose">
       <p>Meist kommen Messungen nicht gleichzeitig, sondern eine nach der anderen. Dann fusioniert man jede neue Messung mit der bisherigen Schätzung, nach genau derselben Regel. Die bisherige Schätzung ist dabei „Sensor A“, ihre Unsicherheit <var>P</var> sinkt mit jeder Messung:</p>
       <div class="eq"><var>K</var> = <span class="frac"><span><var>P</var></span><span><var>P</var> + <var>R</var></span></span>,&emsp; <var>x̂</var> ← <var>x̂</var> + <var>K</var> (<var>z</var> − <var>x̂</var>),&emsp; <var>P</var> ← (1 − <var>K</var>) <var>P</var> + <var>Q</var></div>
-      <p><var>R</var> ist die Varianz der Messung, <var>K</var> heißt Kalman-Verstärkung. Ohne <var>Q</var> ergibt sich genau der laufende Mittelwert: <var>K</var> sinkt wie 1/<var>k</var>, und die Schätzung wird immer träger. Ändert sich die gemessene Größe plötzlich, reagiert sie kaum noch. Das Prozessrauschen <var>Q</var> sagt dem Filter, dass sich die Größe ändern kann; <var>K</var> bleibt dann über null.</p>
+      <p><var>R</var> ist die Varianz der Messung, <var>K</var> heißt Kalman-Verstärkung. Ohne <var>Q</var> ergibt sich genau der laufende Mittelwert: <var>K</var> sinkt wie 1/<var>k</var>, und die Schätzung wird immer träger. Springt die gemessene Größe, reagiert sie kaum noch. Das Prozessrauschen <var>Q</var> sagt dem Filter, dass sich die Größe ändern kann; <var>K</var> bleibt dann über null.</p>
     </div>
     <figure class="fig">
       <canvas class="plot" id="cv-s2" aria-label="Einzelne Messungen, wahrer Wert und rekursive Schätzung mit Unsicherheitsband"></canvas>
-      <canvas class="plot" id="cv-s2k" style="margin-top:10px" aria-label="Kalman-Verstärkung pro Messung"></canvas>
-      <figcaption><b>Abb. 3</b>Oben Messungen (rosa), wahrer Wert und Schätzung mit ±2<var>σ</var>-Band, unten die Verstärkung <var>K</var> jeder Messung</figcaption>
+      <canvas class="plot" id="cv-s2k" style="margin-top:8px" aria-label="Kalman-Verstärkung pro Messung"></canvas>
+      <figcaption><b>Abb. 3</b>Oben Messungen, wahrer Wert und Schätzung mit ±2<var>σ</var>-Band, unten die Verstärkung <var>K</var> jeder Messung</figcaption>
     </figure>
     <div class="row" style="margin-top:14px">
       <button type="button" class="btn solid" id="s2play"></button>
@@ -224,34 +231,36 @@ footer{border-top:1px solid var(--line);margin-top:8px;padding:22px 0 48px;font-
     <span class="num" aria-hidden="true">3</span>
     <h2 id="h-s3">Fusion über die Zeit: Odometrie und GPS</h2>
     <div class="prose">
-      <p>Jetzt bewegt sich das Objekt. Ein Fahrzeug kennt aus den Radsensoren (Odometrie), wie weit es seit dem letzten Schritt gefahren ist. Das ist kurzfristig sehr genau, aber kleine Fehler summieren sich. Das GPS liefert die absolute Position, ohne Drift, aber mit mehreren Metern Rauschen und nur einmal pro Sekunde.</p>
-      <p>Der Kalman-Filter wechselt zwischen zwei Schritten. <b>Vorhersage:</b> Er verschiebt die Schätzung um die Strecke aus der Odometrie, und die Unsicherheit wächst. <b>Korrektur:</b> Kommt ein GPS-Punkt, fusioniert er ihn wie in Schritt 2, und die Unsicherheit schrumpft.</p>
-      <div class="eq"><var>x̂</var><sup>−</sup> = <var>x̂</var> + Δ<var>x</var><sub>Odo</sub>,&emsp; <var>P</var><sup>−</sup> = <var>P</var> + <var>Q</var>&emsp;&emsp; <var>K</var> = <span class="frac"><span><var>P</var><sup>−</sup></span><span><var>P</var><sup>−</sup> + <var>R</var></span></span>,&emsp; <var>x̂</var> = <var>x̂</var><sup>−</sup> + <var>K</var> (<var>z</var><sub>GPS</sub> − <var>x̂</var><sup>−</sup>)</div>
+      <p>Jetzt bewegt sich das Objekt. Ein Fahrzeug kennt aus Radsensoren und Drehratensensor (Odometrie), wie weit und in welche Richtung es seit dem letzten Schritt gefahren ist. Das ist kurzfristig sehr genau, aber ein winziger Fehler in der Drehrate verdreht mit der Zeit die ganze Bahn. Das GPS liefert die absolute Position ohne Drift, aber mit mehreren Metern Rauschen und nur einmal pro Sekunde.</p>
+      <p>Der Kalman-Filter wechselt zwischen zwei Schritten. <b>Vorhersage:</b> Er fährt die Schätzung mit der Odometrie weiter, die Unsicherheit wächst. <b>Korrektur:</b> Kommt ein GPS-Punkt, fusioniert er ihn wie in Schritt 2, die Unsicherheit schrumpft.</p>
+      <div class="eq"><span class="nw">Vorhersage:&ensp; <var>x̂</var><sup>−</sup> = <var>f</var>(<var>x̂</var>, Odometrie),</span>&emsp; <span class="nw"><var>P</var><sup>−</sup> = <var>F P F</var><sup>T</sup> + <var>Q</var></span><br>
+      <span class="nw">Korrektur:&ensp; <var>K</var> = <span class="frac"><span><var>P</var><sup>−</sup><var>H</var><sup>T</sup></span><span><var>H P</var><sup>−</sup><var>H</var><sup>T</sup> + <var>R</var></span></span>,</span>&emsp; <span class="nw"><var>x̂</var> = <var>x̂</var><sup>−</sup> + <var>K</var> (<var>z</var><sub>GPS</sub> − <var>H x̂</var><sup>−</sup>)</span></div>
+      <p>Der Zustand enthält neben der Position auch die Fahrtrichtung und die Drift des Drehratensensors. Das GPS misst beides nicht direkt; der Filter erschließt es aus der Abfolge der Positionen und korrigiert damit auch die Odometrie selbst. Weil die Bewegung über Sinus und Kosinus von der Fahrtrichtung abhängt, wird das Modell in jedem Schritt linearisiert: ein erweiterter Kalman-Filter.</p>
     </div>
     <figure class="fig">
-      <canvas class="plot" id="cv-s3" aria-label="Rundkurs mit wahrer Position, Odometrie, GPS-Punkten und fusionierter Schätzung mit Unsicherheitskreis"></canvas>
-      <figcaption><b>Abb. 4</b>Rundkurs aus der Vogelperspektive. Schwarz: wahre Position, gelb: nur Odometrie, rosa: GPS-Punkte, blau: Fusion mit 2<var>σ</var>-Unsicherheitskreis</figcaption>
+      <canvas class="plot" id="cv-s3" aria-label="Rundkurs mit wahrer Position, Odometrie, GPS-Punkten und fusionierter Schätzung mit Unsicherheitsellipse"></canvas>
+      <figcaption><b>Abb. 4</b>Rundkurs aus der Vogelperspektive, Spuren der letzten 20 Sekunden. Die blaue Ellipse um die Fusion zeigt deren 2<var>σ</var>-Unsicherheit.</figcaption>
     </figure>
     <div class="row" style="margin-top:14px">
       <button type="button" class="btn solid" id="s3play"></button>
-      <button type="button" class="btn" id="s3tunnel" aria-pressed="false">GPS-Ausfall (Tunnel)</button>
+      <button type="button" class="btn" id="s3tunnel" aria-pressed="false"></button>
       <button type="button" class="btn quiet" id="s3reset">Neu starten</button>
     </div>
     <div class="ctls">
       <label><span><span>GPS-Rauschen</span> <output id="o-gn"></output></span><input type="range" id="gn" min="1" max="15" step="0.5" value="5"></label>
       <label><span><span>GPS-Takt</span> <output id="o-gr"></output></span><input type="range" id="gr" min="0.2" max="5" step="0.1" value="1"></label>
-      <label><span><span>Drift der Odometrie</span> <output id="o-od"></output></span><input type="range" id="od" min="0" max="3" step="0.1" value="0.8"></label>
-      <label><span><span>Vertrauen in Odometrie, <var>Q</var></span> <output id="o-oq"></output></span><input type="range" id="oq" min="-1.5" max="1.5" step="0.05" value="0"></label>
+      <label><span><span>Drift des Drehratensensors</span> <output id="o-od"></output></span><input type="range" id="od" min="0" max="3" step="0.1" value="0.8"></label>
+      <label><span><span>Vertrauen in Odometrie, <var>Q</var></span> <output id="o-oq"></output></span><input type="range" id="oq" min="-1.2" max="0.8" step="0.05" value="-0.65"></label>
     </div>
-    <dl class="vals"><div class="a"><dt>Fehler Odometrie</dt><dd id="e-odo"></dd></div><div class="m"><dt>Fehler GPS</dt><dd id="e-gps"></dd></div><div class="f"><dt>Fehler Fusion</dt><dd id="e-fus"></dd></div></dl>
-    <p class="note" style="margin-top:16px">Fehler als Effektivwert der letzten 30 Sekunden. Mit „GPS-Ausfall“ lässt sich zeigen, wie der Unsicherheitskreis im Tunnel wächst und beim ersten GPS-Punkt danach zusammenfällt.</p>
+    <dl class="vals"><div class="a"><dt>Fehler Odometrie</dt><dd id="e-odo"></dd></div><div class="m"><dt>Fehler GPS</dt><dd id="e-gps"></dd></div><div class="f"><dt>Fehler Fusion</dt><dd id="e-fus"></dd></div><div class="f"><dt>Geschätzte Drift</dt><dd id="e-bias"></dd></div></dl>
+    <p class="note" style="margin-top:16px">Fehler als Effektivwert der letzten 30 Sekunden. Mit „GPS-Ausfall“ lässt sich zeigen, wie die Ellipse im Tunnel wächst, die Fusion dank gelernter Drift aber auf Kurs bleibt, und wie sie beim ersten GPS-Punkt danach zusammenfällt.</p>
   </section>
 </main>
 
 <section class="extra" aria-labelledby="h-x">
   <h2 id="h-x">Immer dasselbe Muster</h2>
   <div class="prose">
-    <p>Das Handy aus dem Einstieg ist genau Schritt 3 in einer Dimension: Das Gyroskop übernimmt die Rolle der Odometrie, der Beschleunigungssensor die des GPS. Der dort verwendete Komplementärfilter mischt beide mit festem Gewicht; ein Kalman-Filter würde das Gewicht aus den Unsicherheiten selbst bestimmen. In vielen Anwendungen findet sich dieselbe Paarung:</p>
+    <p>Das Handy aus dem Einstieg ist Schritt 3 in einer Dimension: Das Gyroskop übernimmt die Rolle der Odometrie, der Beschleunigungssensor die des GPS. Auch dort schätzt der Filter die Drift mit, und er senkt das Gewicht des Beschleunigungssensors, solange dieser durch Bewegung gestört ist. In vielen Anwendungen findet sich dieselbe Paarung:</p>
   </div>
   <div class="tablewrap"><table>
     <thead><tr><th scope="col">Anwendung</th><th scope="col">kurzfristig genau, driftet</th><th scope="col">absolut, aber verrauscht</th></tr></thead>
@@ -264,19 +273,18 @@ footer{border-top:1px solid var(--line);margin-top:8px;padding:22px 0 48px;font-
     </tbody>
   </table></div>
   <div class="prose" style="margin-top:28px">
-    <p>Für mehrere Zustände wird aus <var>P</var> eine Kovarianzmatrix und aus der Verschiebung ein Bewegungsmodell <var>x̂</var><sup>−</sup> = <var>F x̂</var> + <var>B u</var>. Ist das Modell nichtlinear, linearisiert der erweiterte Kalman-Filter es in jedem Schritt. Die Grundidee bleibt dieselbe wie in Schritt 1: unsichere Informationen nach ihrer Genauigkeit gewichten.</p>
+    <p>Die Grundidee bleibt in allen Fällen die aus Schritt 1: unsichere Informationen nach ihrer Genauigkeit gewichten. Der Kalman-Filter macht daraus ein Verfahren, das die Genauigkeiten über die Zeit selbst mitführt.</p>
   </div>
 </section>
 <footer>Alle Berechnungen und Simulationen laufen lokal im Browser. Sensordaten werden nicht übertragen.</footer>
 </div>
-
 <script>
 (() => {
 'use strict';
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const DEG = 180 / Math.PI;
+const DEG = 180 / Math.PI, G0 = 9.81;
 const fmt = (v, d = 1) => { if (!isFinite(v)) return '–'; const s = (Math.abs(v) < 0.5 * Math.pow(10, -d) ? 0 : v).toFixed(d); return s.replace('-', '−').replace('.', ','); };
 const randn = () => { let u = 0; while (u === 0) u = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * Math.random()); };
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -291,181 +299,195 @@ function prep(cv, hCss) {
   return { ctx, w: Math.max(10, r.width), h: hCss };
 }
 const setFill = el => el.style.setProperty('--pct', `${(+el.value - +el.min) / (+el.max - +el.min) * 100}%`);
+function bindRange(id, out, onChange) { const el = $('#' + id); const upd = () => { $('#o-' + id).textContent = out(+el.value); setFill(el); if (onChange) onChange(+el.value); }; el.addEventListener('input', upd); upd(); return el; }
 function niceStep(range, n) { const raw = range / n, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
-function legend(ctx, x0, y, items, w) {
-  ctx.font = `500 12px ${C.ui}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  let x = x0, line = 0;
-  items.forEach(([t, col, lw, dash, dot]) => {
-    const wd = 36 + ctx.measureText(t).width;
-    if (x + wd > w - 6 && x > x0) { line++; x = x0; }
-    const yy = y + line * 18;
-    if (dot) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + 9, yy, 3.5, 0, Math.PI * 2); ctx.fill(); }
-    else { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + 18, yy); ctx.stroke(); ctx.setLineDash([]); }
-    ctx.fillStyle = C.ink2; ctx.fillText(t, x + 24, yy); x += wd;
-  });
-  return line;
+function layoutLegend(ctx, x0, items, w) {
+  ctx.font = `500 12px ${C.ui}`; let x = x0, line = 0;
+  return { items: items.map(it => { const wd = 36 + ctx.measureText(it[0]).width; if (x + wd > w - 6 && x > x0) { line++; x = x0; } const r = { it, x, y: 14 + line * 18 }; x += wd; return r; }), lines: line };
 }
-function legendLines(ctx, x0, items, w) { ctx.font = `500 12px ${C.ui}`; let x = x0, line = 0; items.forEach(([t]) => { const wd = 36 + ctx.measureText(t).width; if (x + wd > w - 6 && x > x0) { line++; x = x0; } x += wd; }); return line; }
-// Zeitreihen-Diagramm mit gleitendem Fenster
-function tsPlot(cv, o) {
-  const { ctx, w, h } = prep(cv, o.h);
-  const L = 46, Rr = 12, B = 24, lines = legendLines(ctx, 54, o.legend, w), T = 30 + lines * 18, pw = w - L - Rr, ph = h - T - B;
-  const X = t => L + (t - (o.now - o.win)) / o.win * pw, Y = v => T + (1 - (v - o.ymin) / (o.ymax - o.ymin)) * ph;
-  ctx.font = `500 12px ${C.ui}`; ctx.strokeStyle = C.line; ctx.fillStyle = C.muted; ctx.lineWidth = 1; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-  const ys = niceStep(o.ymax - o.ymin, 4);
-  for (let v = Math.ceil(o.ymin / ys) * ys; v <= o.ymax + 1e-9; v += ys) { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(L + pw, Y(v)); ctx.stroke(); ctx.fillText(fmt(v, 0), L - 8, Y(v)); }
-  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  for (let s = 0; s <= o.win + 1e-9; s += o.win <= 10 ? 2 : 5) ctx.fillText(s === 0 ? 'jetzt' : `−${s} s`, clamp(L + pw - s / o.win * pw, L + 14, w - 22), T + ph + 6);
-  ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillStyle = C.ink2; ctx.fillText(o.unit, 4, 6);
-  ctx.save(); ctx.beginPath(); ctx.rect(L, T, pw, ph); ctx.clip();
-  o.series.forEach(s => {
-    const d = s.data; if (!d || !d.length) return;
-    const col = C[s.c] || s.c;
-    if (s.dots) { ctx.fillStyle = col; for (const [t, v] of d) { ctx.globalAlpha = s.alpha || 0.7; ctx.beginPath(); ctx.arc(X(t), Y(v), s.r || 2.2, 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1; return; }
-    ctx.strokeStyle = col; ctx.lineWidth = s.lw || 1.6; ctx.setLineDash(s.dash || []); ctx.beginPath();
-    d.forEach(([t, v], i) => { const x = X(t), y = Y(clamp(v, o.ymin - 1e3, o.ymax + 1e3)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-    ctx.stroke(); ctx.setLineDash([]);
+function drawLegend(ctx, L) {
+  ctx.font = `500 12px ${C.ui}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  L.items.forEach(({ it: [t, col, lw, dash, kind], x, y }) => {
+    if (kind === 'dot') { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + 9, y, 3.5, 0, Math.PI * 2); ctx.fill(); }
+    else if (kind === 'band') { ctx.fillStyle = col; ctx.fillRect(x, y - 6, 18, 12); }
+    else { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 18, y); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.fillStyle = C.ink2; ctx.fillText(t, x + 24, y);
   });
-  ctx.restore();
-  legend(ctx, Math.max(54, ctx.measureText(o.unit).width + 26), 14, o.legend, w);
 }
 
 // ===================== Einstieg: Handy =====================
-const H = { mode: 'none', t: 0, thT: 0, thG: 0, thA: 0, thF: 0, init: false, shake: 0, buf: [], lastEv: 0, gotData: false, gain: 1, cS: 0, cG: 0, prevA: null, rate: 0, evCount: 0, evT0: 0, running: false };
 const WIN = 20;
-const HP = { bias: 2, anoise: 0, tau: 1 };
-const OUTH = { bias: v => `${fmt(v, 1)} °/s`, anoise: v => `${fmt(v, 1)}°`, tau: v => `${fmt(Math.pow(10, v), Math.pow(10, v) < 1 ? 2 : 1)} s` };
-Object.keys(OUTH).forEach(k => { const el = $('#' + k); const upd = () => { const v = +el.value; HP[k] = k === 'tau' ? Math.pow(10, v) : v; $('#o-' + k).textContent = OUTH[k](v); setFill(el); }; el.addEventListener('input', upd); upd(); });
+const H = { mode: 'none', t: 0, buf: [], init: false, th: 0, b: 0, P: [[100, 0], [0, 4]], thG: 0, thA: 0, trust: 1, gEst: G0, shake: 0, lin: [0, 0],
+  lastEv: 0, gotData: false, gain: 1, cS: 0, cG: 0, prevA: null };
+const HP = { bias: 2, anoise: 0, adapt: true };
+const QT = 0.5, QB = 0.01, R0 = 9;
+bindRange('bias', v => `${fmt(v, 1)} °/s`, v => { HP.bias = v; });
+bindRange('anoise', v => `${fmt(v, 1)}°`, v => { HP.anoise = v; });
+$('#adapt').addEventListener('change', e => { HP.adapt = e.target.checked; });
 
-function hStep(dt, rate, accAng, trueAng) {
-  const w = rate + HP.bias;
-  const aN = accAng + HP.anoise * randn();
-  if (!H.init) { H.thG = H.thF = aN; H.init = true; }
+function kfInit(a) { H.th = a; H.thG = a; H.b = 0; H.P = [[25, 0], [0, 9]]; H.init = true; }
+function hStep(dt, rate, accAng, accNorm, trueAng) {
+  const w = rate + HP.bias, aN = accAng + HP.anoise * randn();
+  if (!H.init) kfInit(aN);
   H.thG += w * dt;
-  const al = HP.tau / (HP.tau + dt);
-  H.thF = al * (H.thF + w * dt) + (1 - al) * aN;
-  H.thA = aN;
-  H.t += dt;
-  H.buf.push([H.t, H.thG, aN, H.thF, trueAng]);
+  // Vorhersage: Winkel mit Gyroskop weiterdrehen, geschätzte Drift abziehen
+  H.th += (w - H.b) * dt;
+  const P = H.P;
+  const p00 = P[0][0] - dt * (P[1][0] + P[0][1]) + dt * dt * P[1][1] + QT * dt, p01 = P[0][1] - dt * P[1][1], p10 = P[1][0] - dt * P[1][1], p11 = P[1][1] + QB * dt;
+  // Korrektur mit dem Beschleunigungswinkel; Gewicht sinkt, wenn mehr als die Schwerkraft gemessen wird
+  const dev = Math.abs(accNorm - H.gEst) / H.gEst;
+  if (dev < 0.04) H.gEst = 0.995 * H.gEst + 0.005 * accNorm;
+  H.trust = HP.adapt ? Math.exp(-Math.pow(dev / 0.06, 2)) : 1;
+  const R = (R0 + HP.anoise * HP.anoise) / Math.max(H.trust, 1e-4);
+  const S = p00 + R, K0 = p00 / S, K1 = p10 / S, y = aN - H.th;
+  H.th += K0 * y; H.b += K1 * y;
+  H.P = [[p00 - K0 * p00, p01 - K0 * p01], [p10 - K1 * p00, p11 - K1 * p01]];
+  H.thA = aN; H.t += dt;
+  H.buf.push([H.t, H.thG, aN, H.th, trueAng, H.trust]);
   while (H.buf.length && H.buf[0][0] < H.t - WIN - 0.5) H.buf.shift();
 }
 // Simulation
-let simPhase = Math.random() * 10, lpShake = 0;
-function simTrue(t) { return 32 * Math.sin(0.55 * t + simPhase) + 14 * Math.sin(1.6 * t + 0.7 * simPhase); }
+let simPhase = Math.random() * 10;
+const simTrue = t => 32 * Math.sin(0.55 * t + simPhase) + 14 * Math.sin(1.6 * t + 0.7 * simPhase);
 function simStep(dt) {
   const t = H.t + dt, th = simTrue(t), rate = (simTrue(t + 1e-3) - simTrue(t - 1e-3)) / 2e-3;
   if (H.shake > 0) H.shake -= dt;
-  lpShake = 0.8 * lpShake + 0.2 * (H.shake > 0 ? 45 * randn() : 0);
-  hStep(dt, rate + 0.4 * randn(), th + 1.2 * randn() + lpShake, th);
+  const amp = H.shake > 0 ? 9 : 0;
+  H.lin[0] = 0.85 * H.lin[0] + 0.15 * amp * randn(); H.lin[1] = 0.85 * H.lin[1] + 0.15 * amp * randn();
+  const ax = G0 * Math.sin(th / DEG) + H.lin[0] + 0.04 * randn(), az = G0 * Math.cos(th / DEG) + H.lin[1] + 0.04 * randn(), ay = 0.04 * randn();
+  hStep(dt, rate + 0.3 * randn(), Math.atan2(ax, Math.hypot(ay, az)) * DEG, Math.hypot(ax, ay, az), th);
 }
-// Sensoren
+// echte Sensoren
 function onMotion(e) {
   const a = e.accelerationIncludingGravity, r = e.rotationRate;
   if (!a || a.x == null || a.z == null || !r || r.gamma == null) return;
   const now = performance.now() / 1000, dt = H.lastEv ? clamp(now - H.lastEv, 0.002, 0.1) : 0.016; H.lastEv = now;
-  if (!H.gotData) { H.gotData = true; H.evT0 = now; setStatus('Sensoren aktiv. Handy flach halten und seitlich kippen.'); }
-  H.evCount++;
-  const accAng = Math.atan2(a.x, Math.hypot(a.y, a.z)) * DEG;
-  // Vorzeichen und Einheit des Gyroskops automatisch an den Beschleunigungssensor angleichen
-  const g = r.gamma;
-  if (H.prevA != null && Math.abs(g) > 15 && Math.abs(g) < 600) { H.cS += (accAng - H.prevA) * g * dt; H.cG += (g * dt) * (g * dt); }
+  if (!H.gotData) { H.gotData = true; setStatus('Sensoren aktiv. Handy flach halten, seitlich kippen, dann schütteln.'); }
+  const ax = +a.x, ay = +(a.y || 0), az = +a.z, accAng = Math.atan2(ax, Math.hypot(ay, az)) * DEG, norm = Math.hypot(ax, ay, az), g = +r.gamma;
+  if (!isFinite(accAng) || !isFinite(g)) return;
+  // Vorzeichen und Einheit des Gyroskops an den Beschleunigungssensor angleichen (iOS und Android unterscheiden sich)
+  if (H.prevA != null && Math.abs(g) > 15 && Math.abs(g) < 600 && Math.abs(norm - H.gEst) < 1.5) { H.cS += (accAng - H.prevA) * g * dt; H.cG += (g * dt) * (g * dt); }
   H.prevA = accAng;
-  if (H.cG > 25) { const slope = H.cS / H.cG, ng = (Math.abs(slope) > 15 ? DEG : 1) * (slope < 0 ? -1 : 1); if (ng !== H.gain) { H.gain = ng; H.thG = H.thF = accAng; } }
-  if (H.mode === 'sensor') hStep(dt, H.gain * g, accAng, null);
+  if (H.cG > 25) { const slope = H.cS / H.cG, ng = (Math.abs(slope) > 15 ? DEG : 1) * (slope < 0 ? -1 : 1); if (ng !== H.gain) { H.gain = ng; H.init = false; } }
+  if (H.mode === 'sensor') hStep(dt, H.gain * g, accAng, norm, null);
 }
 function setStatus(t) { $('#status').textContent = t; }
 function startSim() {
-  H.mode = 'sim'; H.init = false; H.buf = []; H.t = 0; H.running = true; H.shake = 0;
+  window.removeEventListener('devicemotion', onMotion);
+  Object.assign(H, { mode: 'sim', init: false, buf: [], t: 0, shake: 0, lin: [0, 0], gEst: G0 });
   for (let i = 0; i < WIN * 60; i++) simStep(1 / 60);
   $('#shake').disabled = false; $('#startSim').textContent = 'Simulation neu starten';
   $('#simNote').textContent = 'In der Simulation zeigt die gestrichelte Linie den wahren Winkel.';
-  setStatus('Simulation läuft. Mit „Schütteln simulieren“ lässt sich der Beschleunigungssensor stören.');
+  setStatus('Simulation läuft. „Schütteln simulieren“ stört den Beschleunigungssensor für zwei Sekunden.');
 }
 async function startSensors() {
+  const fallback = msg => { setStatus(msg); if (H.mode !== 'sim') startSim(); };
+  if (typeof DeviceMotionEvent === 'undefined') return fallback('Dieser Browser bietet keine Bewegungssensoren an. Die Simulation läuft weiter.');
   try {
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
       const res = await DeviceMotionEvent.requestPermission();
-      if (res !== 'granted') { setStatus('Zugriff auf die Bewegungssensoren wurde nicht erlaubt. Die Simulation läuft weiter.'); if (H.mode !== 'sim') startSim(); return; }
+      if (res !== 'granted') return fallback('Der Zugriff auf die Bewegungssensoren wurde nicht erlaubt. Die Simulation läuft weiter.');
     }
-  } catch (err) { setStatus('Zugriff auf die Sensoren ist in dieser Ansicht nicht möglich. Die Simulation läuft weiter.'); if (H.mode !== 'sim') startSim(); return; }
-  if (typeof DeviceMotionEvent === 'undefined') { setStatus('Dieser Browser bietet keine Bewegungssensoren an. Die Simulation läuft weiter.'); if (H.mode !== 'sim') startSim(); return; }
+  } catch (err) { return fallback('Der Zugriff auf die Sensoren ist in dieser Ansicht nicht möglich. Die Simulation läuft weiter.'); }
   window.addEventListener('devicemotion', onMotion);
-  H.mode = 'sensor'; H.init = false; H.buf = []; H.t = 0; H.running = true; H.gotData = false; H.lastEv = 0;
+  Object.assign(H, { mode: 'sensor', init: false, buf: [], t: 0, gotData: false, lastEv: 0, gEst: G0 });
   $('#shake').disabled = true; $('#simNote').textContent = '';
   setStatus('Warte auf Sensordaten …');
-  setTimeout(() => { if (!H.gotData) { window.removeEventListener('devicemotion', onMotion); setStatus('Keine Sensordaten erhalten: vermutlich ein Rechner ohne Bewegungssensoren, oder der Browser sperrt den Zugriff in dieser Ansicht. Die Simulation läuft stattdessen.'); startSim(); } }, 1800);
+  setTimeout(() => { if (H.mode === 'sensor' && !H.gotData) fallback('Keine Sensordaten erhalten: vermutlich ein Rechner ohne Bewegungssensoren, oder der Browser sperrt den Zugriff in dieser Ansicht. Die Simulation läuft stattdessen.'); }, 1800);
 }
 $('#startSensors').addEventListener('click', startSensors);
 $('#startSim').addEventListener('click', startSim);
-$('#zero').addEventListener('click', () => { H.thG = H.thF = H.thA; });
-$('#shake').addEventListener('click', () => { H.shake = 1.6; });
+$('#shake').addEventListener('click', () => { H.shake = 2; });
 
 function drawHero() {
-  const now = H.t, d = H.buf, sim = H.mode === 'sim';
-  const sel = j => d.map(r => [r[0], r[j]]);
-  let lo = -60, hi = 60;
-  for (const r of d) for (const v of [r[1], r[2], r[3]]) { if (v < lo) lo = v; if (v > hi) hi = v; }
-  lo = Math.max(lo, -180); hi = Math.min(hi, 180);
-  tsPlot($('#cv-hero'), { h: innerWidth < 640 ? 250 : 300, now: Math.max(now, WIN), win: WIN, ymin: lo, ymax: hi, unit: 'Winkel in °',
-    legend: [['Gyroskop', C.amber, 2], ['Beschleunigung', C.mark, 1.2], ['Fusion', C.accent, 2.4]].concat(sim ? [['wahr', C.ink, 1.4, [5, 4]]] : []),
-    series: [sim ? { data: sel(4), c: 'ink', lw: 1.4, dash: [5, 4] } : null, { data: sel(2), c: 'mark', lw: 1.1 }, { data: sel(1), c: 'amber', lw: 2 }, { data: sel(3), c: 'accent', lw: 2.4 }].filter(Boolean) });
+  const d = H.buf, sim = H.mode === 'sim', now = Math.max(H.t, WIN), mob = innerWidth < 640;
+  // Winkel
+  {
+    const cv = $('#cv-hero'), { ctx, w, h } = prep(cv, mob ? 250 : 300);
+    const lg = layoutLegend(ctx, 92, [['nur Gyroskop', C.amber, 2], ['nur Beschleunigung', C.mark, 1.2], ['Fusion', C.accent, 2.6]].concat(sim ? [['wahr', C.ink, 1.4, [5, 4]]] : []), w);
+    const L = 46, Rr = 12, T = 30 + lg.lines * 18, B = 8, pw = w - L - Rr, ph = h - T - B, ymin = -90, ymax = 90;
+    const X = t => L + (t - (now - WIN)) / WIN * pw, Y = v => T + (1 - (clamp(v, ymin - 5, ymax + 5) - ymin) / (ymax - ymin)) * ph;
+    ctx.font = `500 12px ${C.ui}`; ctx.strokeStyle = C.line; ctx.fillStyle = C.muted; ctx.lineWidth = 1; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let v = -90; v <= 90; v += 45) { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(L + pw, Y(v)); ctx.stroke(); ctx.fillText(`${fmt(v, 0)}°`, L - 6, Y(v)); }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillStyle = C.ink2; ctx.fillText('Winkel', 4, 6);
+    ctx.save(); ctx.beginPath(); ctx.rect(L, T, pw, ph); ctx.clip();
+    const line = (j, col, lw, dash) => { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.beginPath(); d.forEach((r, i) => { const x = X(r[0]), y = Y(r[j]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke(); ctx.setLineDash([]); };
+    line(2, C.mark, 1.1); line(1, C.amber, 2);
+    if (sim) line(4, C.ink, 1.4, [5, 4]);
+    line(3, C.accent, 2.6);
+    ctx.restore();
+    drawLegend(ctx, lg);
+  }
+  // Gewicht
+  {
+    const cv = $('#cv-trust'), { ctx, w, h } = prep(cv, 104);
+    const L = 46, Rr = 12, T = 28, B = 22, pw = w - L - Rr, ph = h - T - B;
+    const X = t => L + (t - (now - WIN)) / WIN * pw, Y = v => T + (1 - v) * ph;
+    ctx.font = `500 12px ${C.ui}`; ctx.fillStyle = C.ink2; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('Gewicht der Beschleunigung', 4, 4);
+    ctx.strokeStyle = C.line; ctx.fillStyle = C.muted; ctx.lineWidth = 1; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    [0, 1].forEach(v => { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(L + pw, Y(v)); ctx.stroke(); ctx.fillText(v ? '100 %' : '0 %', L - 6, Y(v)); });
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (let s = 0; s <= WIN; s += 5) ctx.fillText(s === 0 ? 'jetzt' : `−${s} s`, clamp(L + pw - s / WIN * pw, L + 14, w - 22), T + ph + 6);
+    if (d.length) {
+      ctx.fillStyle = C.mark; ctx.globalAlpha = 0.28; ctx.beginPath(); ctx.moveTo(X(d[0][0]), Y(0));
+      d.forEach(r => ctx.lineTo(X(r[0]), Y(r[5]))); ctx.lineTo(X(d[d.length - 1][0]), Y(0)); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+      ctx.strokeStyle = C.mark; ctx.lineWidth = 1.5; ctx.beginPath(); d.forEach((r, i) => { const x = X(r[0]), y = Y(r[5]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+    }
+  }
   const set = (id, a) => { $('#dev' + id).style.setProperty('--a', `${clamp(a, -180, 180)}deg`); $('#ang' + id).textContent = `${fmt(a, 0)}°`; };
-  set('G', H.thG); set('A', H.thA); set('F', H.thF);
+  set('G', H.thG); set('A', H.thA); set('F', H.th);
+  $('#biasEst').textContent = H.mode === 'sim' ? `${fmt(H.b, 2)} °/s (eingestellt ${fmt(HP.bias, 1)} °/s)` : `${fmt(H.b, 2)} °/s`;
+  $('#trustNow').textContent = `${fmt(H.trust * 100, 0)} %`;
 }
 
-// ===================== Schritt 1 =====================
-const S1 = { t: 0, buf: [], acc: 0 };
-const s1p = () => ({ sa: +$('#sa').value, sb: +$('#sb').value });
-['sa', 'sb'].forEach(k => { const el = $('#' + k); const upd = () => { $('#o-' + k).textContent = `${fmt(+el.value, 1)} cm`; setFill(el); s1info(); }; el.addEventListener('input', upd); upd(); });
-function s1info() {
-  const { sa, sb } = s1p(), ia = 1 / (sa * sa), ib = 1 / (sb * sb);
-  $('#wA').textContent = `${fmt(ia / (ia + ib) * 100, 0)} %`; $('#wB').textContent = `${fmt(ib / (ia + ib) * 100, 0)} %`;
-  $('#sF').textContent = `${fmt(1 / Math.sqrt(ia + ib), 2)} cm`;
-}
+// ===================== Schritt 1: Radar und Kamera =====================
+const S1 = { pts: [], acc: 0 };
+const s1v = { ax: 2.0, ay: 0.3, bx: 0.3, by: 2.0 };
+const S1PRE = { komp: { ax: 2.0, ay: 0.3, bx: 0.3, by: 2.0 }, besser: { ax: 0.5, ay: 0.4, bx: 1.6, by: 1.8 }, gleich: { ax: 1.2, ay: 1.2, bx: 1.2, by: 1.2 } };
+const s1el = {};
+['ax', 'ay', 'bx', 'by'].forEach(k => { $('#' + k).value = s1v[k]; s1el[k] = bindRange(k, v => `σ = ${fmt(v, 2)} m`, v => { s1v[k] = v; }); });
+$$('[data-s1]').forEach(b => b.addEventListener('click', () => { Object.assign(s1v, S1PRE[b.dataset.s1]); Object.keys(s1v).forEach(k => { s1el[k].value = s1v[k]; s1el[k].dispatchEvent(new Event('input')); }); S1.pts = []; }));
+const fuse = (a, b, sa, sb) => (a / (sa * sa) + b / (sb * sb)) / (1 / (sa * sa) + 1 / (sb * sb));
 function s1step() {
-  const { sa, sb } = s1p(), ia = 1 / (sa * sa), ib = 1 / (sb * sb);
-  const a = 100 + sa * randn(), b = 100 + sb * randn();
-  S1.t += 0.05;
-  S1.buf.push([S1.t, a, b, (a + b) / 2, (a * ia + b * ib) / (ia + ib)]);
-  while (S1.buf.length > 200) S1.buf.shift();
+  const v = s1v, A = [v.ax * randn(), v.ay * randn()], B = [v.bx * randn(), v.by * randn()];
+  S1.pts.push({ A, B, M: [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2], F: [fuse(A[0], B[0], v.ax, v.bx), fuse(A[1], B[1], v.ay, v.by)] });
+  while (S1.pts.length > 120) S1.pts.shift();
 }
-function sd(arr) { const n = arr.length; if (n < 2) return NaN; const m = arr.reduce((s, v) => s + v, 0) / n; return Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / (n - 1)); }
 function drawS1() {
-  const d = S1.buf, sel = j => d.map(r => [r[0], r[j]]), { sa, sb } = s1p(), m = Math.max(sa, sb) * 3.2 + 2;
-  tsPlot($('#cv-s1'), { h: innerWidth < 640 ? 250 : 290, now: Math.max(S1.t, 10), win: 10, ymin: 100 - m, ymax: 100 + m, unit: 'Abstand in cm',
-    legend: [['Sensor A', C.amber, 2, null, true], ['Sensor B', C.mark, 2, null, true], ['Mittelwert', C.muted, 1.6], ['gewichtet', C.accent, 2.4]],
-    series: [{ data: sel(2), c: 'mark', dots: true }, { data: sel(1), c: 'amber', dots: true }, { data: sel(3), c: 'muted', lw: 1.4 }, { data: sel(4), c: 'accent', lw: 2.4 }] });
-  // Balken
-  const cv = $('#cv-s1b'), { ctx, w, h } = prep(cv, innerWidth < 640 ? 230 : 290);
-  const ia = 1 / (sa * sa), ib = 1 / (sb * sb);
-  const bars = [['Sensor A', sd(d.map(r => r[1])), sa, C.amber], ['Sensor B', sd(d.map(r => r[2])), sb, C.mark], ['Mittelwert', sd(d.map(r => r[3])), Math.sqrt(sa * sa + sb * sb) / 2, C.muted], ['gewichtet', sd(d.map(r => r[4])), 1 / Math.sqrt(ia + ib), C.accent]];
-  const vmax = Math.max(...bars.map(b => Math.max(isFinite(b[1]) ? b[1] : 0, b[2]))) * 1.15;
-  const L = 12, T = 26, B = 40, pw = w - 2 * L, ph = h - T - B, bw = pw / bars.length;
-  ctx.font = `500 12px ${C.ui}`; ctx.fillStyle = C.ink2; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('Streuung σ in cm', 4, 6);
-  bars.forEach(([lab, v, th, col], i) => {
-    const x = L + i * bw + bw * 0.18, bwi = bw * 0.64, yv = T + ph * (1 - (isFinite(v) ? v : 0) / vmax), yt = T + ph * (1 - th / vmax);
-    ctx.fillStyle = col; ctx.globalAlpha = 0.85; ctx.fillRect(x, yv, bwi, T + ph - yv); ctx.globalAlpha = 1;
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 4, yt); ctx.lineTo(x + bwi + 4, yt); ctx.stroke();
-    ctx.fillStyle = C.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.font = `600 12px ${C.ui}`; ctx.fillText(fmt(v, 1), x + bwi / 2, Math.min(yv, yt) - 4);
-    ctx.fillStyle = C.ink2; ctx.textBaseline = 'top'; ctx.font = `500 12px ${C.ui}`; ctx.fillText(lab, x + bwi / 2, T + ph + 8);
-  });
-  ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(L, T + ph + .5); ctx.lineTo(w - L, T + ph + .5); ctx.stroke();
+  const cv = $('#cv-s1'), mob = innerWidth < 640, { ctx, w, h } = prep(cv, mob ? 340 : 440), v = s1v;
+  const lg = layoutLegend(ctx, 12, [['Radar', C.amber, 2, null, 'dot'], ['Kamera', C.mark, 2, null, 'dot'], ['Mittelwert', C.muted, 2, null, 'dot'], ['Fusion', C.accent, 2, null, 'dot']], w);
+  const T = 30 + lg.lines * 18, B = 26, ext = 6.5, sc = Math.min((w - 40) / (2 * ext), (h - T - B) / (2 * ext * 0.62));
+  const cx = w / 2, cy = T + (h - T - B) / 2, X = x => cx + x * sc, Y = y => cy - y * sc;
+  ctx.font = `500 12px ${C.ui}`; ctx.strokeStyle = C.line; ctx.lineWidth = 1;
+  const gx = Math.floor((w / 2) / sc), gy = Math.floor((h - T - B) / 2 / sc);
+  for (let i = -gx; i <= gx; i++) { ctx.beginPath(); ctx.moveTo(X(i), T); ctx.lineTo(X(i), h - B); ctx.stroke(); }
+  for (let j = -gy; j <= gy; j++) { ctx.beginPath(); ctx.moveTo(0, Y(j)); ctx.lineTo(w, Y(j)); ctx.stroke(); }
+  ctx.fillStyle = C.ink2; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText('quer (1 m Raster)', w / 2, h - B + 6);
+  ctx.save(); ctx.translate(14, cy); ctx.rotate(-Math.PI / 2); ctx.textBaseline = 'middle'; ctx.fillText('Entfernung', 0, 0); ctx.restore();
+  ctx.save(); ctx.beginPath(); ctx.rect(0, T, w, h - T - B); ctx.clip();
+  const ell = (sx, sy, col) => { ctx.strokeStyle = col; ctx.lineWidth = 1.8; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.ellipse(X(0), Y(0), Math.max(1, 2 * sx * sc), Math.max(1, 2 * sy * sc), 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); };
+  const pts = (key, col, r) => { ctx.fillStyle = col; ctx.globalAlpha = 0.55; S1.pts.forEach(p => { ctx.beginPath(); ctx.arc(X(p[key][0]), Y(p[key][1]), r, 0, Math.PI * 2); ctx.fill(); }); ctx.globalAlpha = 1; };
+  const fx = 1 / Math.sqrt(1 / (v.ax * v.ax) + 1 / (v.bx * v.bx)), fy = 1 / Math.sqrt(1 / (v.ay * v.ay) + 1 / (v.by * v.by));
+  pts('A', C.amber, 2.6); pts('B', C.mark, 2.6); pts('M', C.muted, 2.6); pts('F', C.accent, 3);
+  ell(v.ax, v.ay, C.amber); ell(v.bx, v.by, C.mark); ell(Math.hypot(v.ax, v.bx) / 2, Math.hypot(v.ay, v.by) / 2, C.muted); ell(fx, fy, C.accent);
+  ctx.restore();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(-0.35), Y(0)); ctx.lineTo(X(0.35), Y(0)); ctx.moveTo(X(0), Y(-0.35)); ctx.lineTo(X(0), Y(0.35)); ctx.stroke();
+  drawLegend(ctx, lg);
+  const err = k => { const a = S1.pts; return a.length ? a.reduce((s, p) => s + Math.hypot(p[k][0], p[k][1]), 0) / a.length : NaN; };
+  $('#r1A').textContent = `${fmt(err('A'), 2)} m`; $('#r1B').textContent = `${fmt(err('B'), 2)} m`; $('#r1M').textContent = `${fmt(err('M'), 2)} m`; $('#r1F').textContent = `${fmt(err('F'), 2)} m`;
 }
 
 // ===================== Schritt 2 =====================
-const S2 = { k: 0, truth: 50, x: 0, P: 1e6, data: [], playing: !reduce, acc: 0, N: 60 };
+const S2 = { k: 0, truth: 50, x: 0, P: 1e6, data: [], playing: !reduce, N: 60 };
+bindRange('s2r', v => fmt(v, 1));
+bindRange('s2q', v => fmt(v, 1));
 const s2R = () => Math.pow(+$('#s2r').value, 2), s2Q = () => +$('#s2q').value;
-const OUT2 = { s2r: v => `${fmt(v, 1)}`, s2q: v => fmt(v, 1) };
-Object.keys(OUT2).forEach(k => { const el = $('#' + k); const upd = () => { $('#o-' + k).textContent = OUT2[k](+el.value); setFill(el); }; el.addEventListener('input', upd); upd(); });
-function s2reset() { S2.k = 0; S2.truth = 50; S2.x = 0; S2.P = 1e6; S2.data = []; drawS2(); }
+function s2reset() { Object.assign(S2, { k: 0, truth: 50, x: 0, P: 1e6, data: [] }); drawS2(); }
 function s2measure() {
   if (S2.k >= S2.N) { S2.playing = false; syncS2(); return; }
-  const R = s2R(), z = S2.truth + Math.sqrt(R) * randn();
-  const P = S2.k === 0 ? 1e6 : S2.P;
-  const K = P / (P + R);
+  const R = s2R(), z = S2.truth + Math.sqrt(R) * randn(), P = S2.k === 0 ? 1e6 : S2.P, K = P / (P + R);
   S2.x = S2.k === 0 ? z : S2.x + K * (z - S2.x);
-  S2.P = (1 - K) * P + s2Q();
-  S2.k++;
+  S2.P = (1 - K) * P + s2Q(); S2.k++;
   S2.data.push({ k: S2.k, z, truth: S2.truth, x: S2.x, sig: Math.sqrt((1 - K) * P), K });
   drawS2();
 }
@@ -476,8 +498,8 @@ $('#s2jump').addEventListener('click', () => { S2.truth += 20; drawS2(); });
 $('#s2reset').addEventListener('click', () => { s2reset(); syncS2(); });
 function drawS2() {
   const cv = $('#cv-s2'), { ctx, w, h } = prep(cv, innerWidth < 640 ? 250 : 300), d = S2.data, N = S2.N;
-  const lines = legendLines(ctx, 54, [['Messung'], ['wahr'], ['Schätzung'], ['±2σ']], w);
-  const L = 46, Rr = 12, T = 30 + lines * 18, B = 24, pw = w - L - Rr, ph = h - T - B;
+  const lg = layoutLegend(ctx, 54, [['Messung', C.mark, 2, null, 'dot'], ['wahr', C.ink, 1.4, [5, 4]], ['Schätzung', C.accent, 2.4], ['±2σ', C.soft, 0, null, 'band']], w);
+  const L = 46, Rr = 12, T = 30 + lg.lines * 18, B = 24, pw = w - L - Rr, ph = h - T - B;
   const allz = d.map(e => e.z).concat([S2.truth, 50]);
   const ymin = Math.min(20, Math.min(...allz) - 5), ymax = Math.max(80, Math.max(...allz) + 5);
   const X = k => L + (k - 0.5) / N * pw, Y = v => T + (1 - (v - ymin) / (ymax - ymin)) * ph;
@@ -485,7 +507,7 @@ function drawS2() {
   const ys = niceStep(ymax - ymin, 4);
   for (let v = Math.ceil(ymin / ys) * ys; v <= ymax; v += ys) { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(L + pw, Y(v)); ctx.stroke(); ctx.fillText(fmt(v, 0), L - 8, Y(v)); }
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  for (let k = 0; k <= N; k += 10) ctx.fillText(k === N ? `${k} Messungen` : String(k), clamp(X(k + 0.5), L + 10, w - 40), T + ph + 6);
+  for (let k = 10; k <= N; k += 10) ctx.fillText(k === N ? `${k}. Messung` : String(k), clamp(X(k), L + 10, w - 40), T + ph + 6);
   ctx.save(); ctx.beginPath(); ctx.rect(L, T, pw, ph); ctx.clip();
   if (d.length) {
     ctx.fillStyle = C.soft; ctx.beginPath();
@@ -498,11 +520,9 @@ function drawS2() {
     ctx.strokeStyle = C.accent; ctx.lineWidth = 2.4; ctx.beginPath(); d.forEach((e, i) => { const x = X(e.k), y = Y(e.x); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
   }
   ctx.restore();
-  ctx.fillStyle = C.ink2; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('Wert', 4, 6);
-  legend(ctx, 54, 14, [['Messung', C.mark, 2, null, true], ['wahr', C.ink, 1.4, [5, 4]], ['Schätzung', C.accent, 2.4]], w);
-  // K-Balken
-  const cv2 = $('#cv-s2k'), r2 = prep(cv2, 120), c2 = r2.ctx, T2 = 22, ph2 = 120 - T2 - 22;
-  const X2 = k => L + (k - 1) / N * pw;
+  ctx.fillStyle = C.ink2; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.font = `500 12px ${C.ui}`; ctx.fillText('Wert', 4, 6);
+  drawLegend(ctx, lg);
+  const cv2 = $('#cv-s2k'), r2 = prep(cv2, 110), c2 = r2.ctx, T2 = 22, ph2 = 110 - T2 - 12, X2 = k => L + (k - 1) / N * pw;
   c2.font = `500 12px ${C.ui}`; c2.fillStyle = C.ink2; c2.textAlign = 'left'; c2.textBaseline = 'top'; c2.fillText('Verstärkung K', 4, 4);
   c2.strokeStyle = C.line; c2.fillStyle = C.muted; c2.textAlign = 'right'; c2.textBaseline = 'middle';
   [0, 0.5, 1].forEach(v => { const y = T2 + (1 - v) * ph2; c2.beginPath(); c2.moveTo(L, y); c2.lineTo(L + pw, y); c2.stroke(); c2.fillText(fmt(v, 1), L - 8, y); });
@@ -515,109 +535,120 @@ function drawS2() {
   $('#s2kk').textContent = last ? fmt(last.K, 3) : '–';
 }
 
-// ===================== Schritt 3 =====================
+// ===================== Schritt 3: Odometrie und GPS (erweiterter Kalman-Filter) =====================
 const S3 = { playing: !reduce, tunnel: false };
 const trk = u => [95 * Math.cos(u), 48 * Math.sin(u) + 14 * Math.sin(2 * u)];
 const trkD = u => [-95 * Math.sin(u), 48 * Math.cos(u) + 28 * Math.cos(2 * u)];
-const s3par = () => ({ gn: +$('#gn').value, gr: +$('#gr').value, od: +$('#od').value, q: Math.pow(Math.pow(10, +$('#oq').value), 2) });
-const OUT3 = { gn: v => `${fmt(v, 1)} m`, gr: v => v < 1 ? `${fmt(1 / v, 1)} pro s` : `alle ${fmt(v, 1)} s`, od: v => `${fmt(v, 1)} °/s`, oq: v => `${fmt(Math.pow(10, v), Math.pow(10, v) < 1 ? 2 : 1)} m/√s` };
-Object.keys(OUT3).forEach(k => { const el = $('#' + k); const upd = () => { $('#o-' + k).textContent = OUT3[k](+el.value); setFill(el); }; el.addEventListener('input', upd); upd(); });
+const s3v = { gn: 5, gr: 1, od: 0.8, q: 0.05 };
+bindRange('gn', v => `${fmt(v, 1)} m`, v => { s3v.gn = v; });
+bindRange('gr', v => v < 1 ? `${fmt(1 / v, 1)}-mal pro s` : `alle ${fmt(v, 1)} s`, v => { s3v.gr = v; });
+bindRange('od', v => `${fmt(v, 1)} °/s`, v => { s3v.od = v; });
+bindRange('oq', v => { const s = Math.pow(10, v); return `${fmt(s, s < 1 ? 2 : 1)} m/√s`; }, v => { s3v.q = Math.pow(Math.pow(10, v), 2); });
+const mm = (A, B) => A.map(r => B[0].map((_, j) => r.reduce((s, v, l) => s + v * B[l][j], 0)));
+const tr = A => A[0].map((_, j) => A.map(r => r[j]));
 function s3reset() {
-  const p = trk(0), dv = trkD(0);
-  Object.assign(S3, { t: 0, u: 0, psi: Math.atan2(dv[1], dv[0]), true: p, odo: [...p], psiO: Math.atan2(dv[1], dv[0]), est: [...p], P: 1, nextGps: 0, trT: [], trO: [], trF: [], gps: [], errs: [] });
+  const p = trk(0), d = trkD(0), psi = Math.atan2(d[1], d[0]);
+  Object.assign(S3, { t: 0, u: 0, psi, p, odo: [...p], psiO: psi, s: [p[0], p[1], psi, 0],
+    P: [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0.003, 0], [0, 0, 0, Math.pow(3 / DEG, 2)]], next: 0, trT: [], trO: [], trF: [], gps: [], errs: [] });
 }
 function s3step(dt) {
-  const pr = s3par(), v = 13;
-  const dv = trkD(S3.u), sp = Math.hypot(dv[0], dv[1]);
-  S3.u += v * dt / sp;
-  const p = trk(S3.u), d2 = trkD(S3.u), psi = Math.atan2(d2[1], d2[0]);
-  let dpsi = psi - S3.psi; dpsi = Math.atan2(Math.sin(dpsi), Math.cos(dpsi));
-  S3.psi = psi; S3.true = p; S3.t += dt;
-  // Odometrie: Gierrate mit Drift, Geschwindigkeit mit 2 % Skalenfehler
-  S3.psiO += dpsi + (pr.od / DEG) * dt + 0.002 * randn();
-  const vo = v * 1.02 + 0.2 * randn(), dx = vo * dt * Math.cos(S3.psiO), dy = vo * dt * Math.sin(S3.psiO);
-  S3.odo[0] += dx; S3.odo[1] += dy;
-  // Kalman: Vorhersage
-  S3.est[0] += dx; S3.est[1] += dy; S3.P += pr.q * dt;
+  const v = 13, dv = trkD(S3.u);
+  S3.u += v * dt / Math.hypot(dv[0], dv[1]);
+  const p = trk(S3.u), d2 = trkD(S3.u), npsi = Math.atan2(d2[1], d2[0]);
+  let dpsi = npsi - S3.psi; dpsi = Math.atan2(Math.sin(dpsi), Math.cos(dpsi));
+  S3.psi = npsi; S3.p = p; S3.t += dt;
+  // Odometrie: Drehrate mit Drift, Geschwindigkeit mit 2 % Skalenfehler
+  const wm = dpsi / dt + s3v.od / DEG + 0.02 * randn(), vm = v * 1.02 + 0.2 * randn();
+  S3.psiO += wm * dt; S3.odo[0] += vm * dt * Math.cos(S3.psiO); S3.odo[1] += vm * dt * Math.sin(S3.psiO);
+  // Vorhersage: Zustand [x, y, Richtung, Drift]
+  const s = S3.s, ps = s[2];
+  S3.s = [s[0] + vm * dt * Math.cos(ps), s[1] + vm * dt * Math.sin(ps), ps + (wm - s[3]) * dt, s[3]];
+  const F = [[1, 0, -vm * dt * Math.sin(ps), 0], [0, 1, vm * dt * Math.cos(ps), 0], [0, 0, 1, -dt], [0, 0, 0, 1]];
+  S3.P = mm(mm(F, S3.P), tr(F));
+  [s3v.q * dt, s3v.q * dt, Math.pow(0.15 / DEG, 2) * dt, Math.pow(0.02 / DEG, 2) * dt].forEach((q, i) => { S3.P[i][i] += q; });
   // Korrektur mit GPS
-  let gpsErr = null;
-  if (S3.t >= S3.nextGps) {
-    S3.nextGps = S3.t + pr.gr;
+  let gErr = null;
+  if (S3.t >= S3.next) {
+    S3.next = S3.t + s3v.gr;
     if (!S3.tunnel) {
-      const z = [p[0] + pr.gn * randn(), p[1] + pr.gn * randn()], R = pr.gn * pr.gn, K = S3.P / (S3.P + R);
-      S3.est[0] += K * (z[0] - S3.est[0]); S3.est[1] += K * (z[1] - S3.est[1]); S3.P *= (1 - K);
-      S3.gps.push([z[0], z[1], S3.t]); gpsErr = Math.hypot(z[0] - p[0], z[1] - p[1]);
+      const z = [p[0] + s3v.gn * randn(), p[1] + s3v.gn * randn()], R = s3v.gn * s3v.gn, P = S3.P;
+      const S = [[P[0][0] + R, P[0][1]], [P[1][0], P[1][1] + R]], det = S[0][0] * S[1][1] - S[0][1] * S[1][0];
+      const Si = [[S[1][1] / det, -S[0][1] / det], [-S[1][0] / det, S[0][0] / det]];
+      const K = mm(P.map(r => [r[0], r[1]]), Si), y = [z[0] - S3.s[0], z[1] - S3.s[1]];
+      for (let i = 0; i < 4; i++) S3.s[i] += K[i][0] * y[0] + K[i][1] * y[1];
+      const IKH = K.map((r, i) => [0, 1, 2, 3].map(j => (i === j ? 1 : 0) - (j < 2 ? r[j] : 0)));
+      S3.P = mm(IKH, P);
+      S3.gps.push([z[0], z[1], S3.t]); gErr = Math.hypot(z[0] - p[0], z[1] - p[1]);
     }
   }
-  S3.trT.push([...p]); S3.trO.push([...S3.odo]); S3.trF.push([...S3.est]);
-  const keep = 30 / dt; [S3.trT, S3.trO, S3.trF].forEach(a => { while (a.length > keep) a.shift(); });
-  while (S3.gps.length && S3.gps[0][2] < S3.t - 12) S3.gps.shift();
-  S3.errs.push([S3.t, Math.hypot(S3.odo[0] - p[0], S3.odo[1] - p[1]), Math.hypot(S3.est[0] - p[0], S3.est[1] - p[1]), gpsErr]);
+  S3.trT.push([...p]); S3.trO.push([...S3.odo]); S3.trF.push([S3.s[0], S3.s[1]]);
+  const keep = 20 / dt; [S3.trT, S3.trO, S3.trF].forEach(a => { while (a.length > keep) a.shift(); });
+  while (S3.gps.length && S3.gps[0][2] < S3.t - 10) S3.gps.shift();
+  S3.errs.push([S3.t, Math.hypot(S3.odo[0] - p[0], S3.odo[1] - p[1]), Math.hypot(S3.s[0] - p[0], S3.s[1] - p[1]), gErr]);
   while (S3.errs.length && S3.errs[0][0] < S3.t - 30) S3.errs.shift();
 }
 function syncS3() { $('#s3play').textContent = S3.playing ? 'Anhalten' : 'Abspielen'; $('#s3tunnel').setAttribute('aria-pressed', String(S3.tunnel)); $('#s3tunnel').textContent = S3.tunnel ? 'GPS wieder einschalten' : 'GPS-Ausfall (Tunnel)'; }
 $('#s3play').addEventListener('click', () => { S3.playing = !S3.playing; syncS3(); });
 $('#s3tunnel').addEventListener('click', () => { S3.tunnel = !S3.tunnel; syncS3(); });
-$('#s3reset').addEventListener('click', () => { s3reset(); drawS3(); });
+$('#s3reset').addEventListener('click', () => { s3reset(); for (let i = 0; i < 1200; i++) s3step(0.05); drawS3(); });
 function drawS3() {
-  const cv = $('#cv-s3'), { ctx, w, h } = prep(cv, innerWidth < 640 ? 300 : 440);
-  const lines = legendLines(ctx, 12, [['wahr'], ['nur Odometrie'], ['GPS'], ['Fusion'], ['2σ']], w);
-  const T = 30 + lines * 18, pad = 14, xr = 125, yr = 80, sc = Math.min((w - 2 * pad) / (2 * xr), (h - T - pad) / (2 * yr));
-  const cx = w / 2, cy = T + (h - T) / 2;
-  const X = x => cx + x * sc, Y = y => cy - y * sc;
-  ctx.strokeStyle = C.line; ctx.lineWidth = 10 * sc > 3 ? 9 * sc : 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = 0.55; ctx.beginPath();
-  for (let i = 0; i <= 300; i++) { const p = trk(i / 300 * Math.PI * 2); i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1])); }
-  ctx.stroke(); ctx.globalAlpha = 1; ctx.lineCap = 'butt';
-  const trail = (a, col, lw, dash) => { if (!a.length) return; ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.beginPath(); a.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1]))); ctx.stroke(); ctx.setLineDash([]); };
+  const cv = $('#cv-s3'), mob = innerWidth < 640, { ctx, w, h } = prep(cv, mob ? 300 : 440);
+  const lg = layoutLegend(ctx, 12, [['wahr', C.ink, 1.6, [5, 4]], ['nur Odometrie', C.amber, 2], ['GPS', C.mark, 2, null, 'dot'], ['Fusion', C.accent, 2.6]], w);
+  const T = 30 + lg.lines * 18, pad = 14, xr = 125, yr = 78, sc = Math.min((w - 2 * pad) / (2 * xr), (h - T - pad) / (2 * yr));
+  const cx = w / 2, cy = T + (h - T) / 2, X = x => cx + x * sc, Y = y => cy - y * sc;
+  ctx.strokeStyle = C.line; ctx.lineWidth = Math.max(4, 8 * sc); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath();
+  for (let i = 0; i <= 300; i++) { const q = trk(i / 300 * Math.PI * 2); i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1])); }
+  ctx.closePath(); ctx.stroke(); ctx.lineCap = 'butt';
+  const trail = (a, col, lw, dash) => { if (!a.length) return; ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.beginPath(); a.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1]))); ctx.stroke(); ctx.setLineDash([]); };
   ctx.save(); ctx.beginPath(); ctx.rect(0, T, w, h - T); ctx.clip();
-  trail(S3.trT, C.ink, 1.6, [5, 4]); trail(S3.trO, C.amber, 2); trail(S3.trF, C.accent, 2.4);
-  S3.gps.forEach(g => { const age = S3.t - g[2]; ctx.globalAlpha = clamp(1 - age / 12, 0.1, 1); ctx.fillStyle = C.mark; ctx.beginPath(); ctx.arc(X(g[0]), Y(g[1]), 4, 0, Math.PI * 2); ctx.fill(); });
+  trail(S3.trO, C.amber, 2); trail(S3.trT, C.ink, 1.6, [5, 4]); trail(S3.trF, C.accent, 2.6);
+  S3.gps.forEach(g => { ctx.globalAlpha = clamp(1 - (S3.t - g[2]) / 10, 0.12, 1); ctx.fillStyle = C.mark; ctx.beginPath(); ctx.arc(X(g[0]), Y(g[1]), 4, 0, Math.PI * 2); ctx.fill(); });
   ctx.globalAlpha = 1;
-  const r2 = 2 * Math.sqrt(S3.P) * sc;
-  ctx.fillStyle = C.soft; ctx.strokeStyle = C.accent; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(X(S3.est[0]), Y(S3.est[1]), Math.max(2, r2), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  const dotp = (p, col, r) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), r, 0, Math.PI * 2); ctx.fill(); };
-  dotp(S3.odo, C.amber, 5.5); dotp(S3.est, C.accent, 5.5);
-  ctx.save(); ctx.translate(X(S3.true[0]), Y(S3.true[1])); ctx.rotate(-S3.psi); ctx.fillStyle = C.ink; ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-6, 5.5); ctx.lineTo(-6, -5.5); ctx.closePath(); ctx.fill(); ctx.restore();
+  // 2σ-Ellipse aus dem Positionsteil von P
+  const a = S3.P[0][0], b = S3.P[0][1], c = S3.P[1][1], tr2 = (a + c) / 2, dd = Math.sqrt(Math.max(0, ((a - c) / 2) ** 2 + b * b));
+  const l1 = tr2 + dd, l2 = Math.max(1e-6, tr2 - dd), ang = Math.atan2(l1 - a, b || 1e-9);
+  ctx.fillStyle = C.soft; ctx.strokeStyle = C.accent; ctx.lineWidth = 1.5; ctx.beginPath();
+  ctx.ellipse(X(S3.s[0]), Y(S3.s[1]), Math.max(3, 2 * Math.sqrt(l1) * sc), Math.max(3, 2 * Math.sqrt(l2) * sc), -ang, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  const dot = (q, col, r) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X(q[0]), Y(q[1]), r, 0, Math.PI * 2); ctx.fill(); };
+  dot(S3.odo, C.amber, 5.5); dot(S3.s, C.accent, 5.5);
+  ctx.save(); ctx.translate(X(S3.p[0]), Y(S3.p[1])); ctx.rotate(-S3.psi); ctx.fillStyle = C.ink; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-7, 6); ctx.lineTo(-7, -6); ctx.closePath(); ctx.fill(); ctx.restore();
   ctx.restore();
-  // Maßstab
   const L20 = 20 * sc; ctx.strokeStyle = C.ink2; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(w - pad - L20, h - pad); ctx.lineTo(w - pad, h - pad); ctx.moveTo(w - pad - L20, h - pad - 4); ctx.lineTo(w - pad - L20, h - pad + 1); ctx.moveTo(w - pad, h - pad - 4); ctx.lineTo(w - pad, h - pad + 1); ctx.stroke();
   ctx.fillStyle = C.ink2; ctx.font = `500 12px ${C.ui}`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText('20 m', w - pad - L20 / 2, h - pad - 4);
   if (S3.tunnel) { ctx.fillStyle = C.mark; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.font = `600 13px ${C.ui}`; ctx.fillText('GPS ausgefallen', pad, h - pad); }
-  legend(ctx, 12, 14, [['wahr', C.ink, 1.6, [5, 4]], ['nur Odometrie', C.amber, 2], ['GPS', C.mark, 2, null, true], ['Fusion', C.accent, 2.4]], w);
-  const rms = j => { const a = S3.errs.map(e => e[j]).filter(v => v != null); return a.length ? Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length) : NaN; };
+  drawLegend(ctx, lg);
+  const rms = j => { const arr = S3.errs.map(e => e[j]).filter(x => x != null); return arr.length ? Math.sqrt(arr.reduce((s, x) => s + x * x, 0) / arr.length) : NaN; };
   $('#e-odo').textContent = `${fmt(rms(1), 1)} m`; $('#e-gps').textContent = isFinite(rms(3)) ? `${fmt(rms(3), 1)} m` : 'kein Empfang'; $('#e-fus').textContent = `${fmt(rms(2), 1)} m`;
+  $('#e-bias').textContent = `${fmt(S3.s[3] * DEG, 2)} °/s (wahr ${fmt(s3v.od, 1)} °/s)`;
 }
 
 // ===================== Schleife =====================
 const vis = { hero: true, s1: false, s2: false, s3: false };
 if ('IntersectionObserver' in window) {
   const io = new IntersectionObserver(es => es.forEach(en => { vis[en.target.dataset.v] = en.isIntersecting; }), { rootMargin: '80px' });
-  [['#cv-hero', 'hero'], ['#s1', 's1'], ['#s2', 's2'], ['#s3', 's3']].forEach(([s, k]) => { const el = $(s); el.dataset.v = k; io.observe(el); });
-} else { Object.keys(vis).forEach(k => { vis[k] = true; }); }
+  [['.hero', 'hero'], ['#s1', 's1'], ['#s2', 's2'], ['#s3', 's3']].forEach(([s, k]) => { const el = $(s); el.dataset.v = k; io.observe(el); });
+} else Object.keys(vis).forEach(k => { vis[k] = true; });
 let last = 0, s2acc = 0;
 function loop(ts) {
   const dt = last ? Math.min(0.1, (ts - last) / 1000) : 0.016; last = ts;
-  if (H.mode === 'sim' && H.running && vis.hero) { let r = dt; while (r > 1e-6) { const s = Math.min(1 / 60, r); simStep(s); r -= s; } }
+  if (H.mode === 'sim' && vis.hero) { let r = dt; while (r > 1e-6) { const s = Math.min(1 / 60, r); simStep(s); r -= s; } }
   if (vis.hero && H.mode !== 'none') drawHero();
-  if (vis.s1 && !document.hidden) { S1.acc += dt; let n = 0; while (S1.acc >= 0.05 && n++ < 10) { S1.acc -= 0.05; s1step(); } drawS1(); }
+  if (vis.s1) { S1.acc += dt; let n = 0; while (S1.acc >= 0.08 && n++ < 10) { S1.acc -= 0.08; s1step(); } drawS1(); }
   if (vis.s2 && S2.playing) { s2acc += dt; if (s2acc > 0.25) { s2acc = 0; s2measure(); if (S2.k >= S2.N) { S2.playing = false; syncS2(); } } }
   if (vis.s3) { if (S3.playing) { let r = dt; while (r > 1e-6) { const s = Math.min(0.05, r); s3step(s); r -= s; } } drawS3(); }
   requestAnimationFrame(loop);
 }
-const redraw = () => { C = colors(); drawHero(); drawS1(); drawS2(); drawS3(); };
+const redraw = () => { C = colors(); if (H.mode !== 'none') drawHero(); drawS1(); drawS2(); drawS3(); };
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw);
 new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
 let rz = 0; new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(redraw, 80); }).observe(document.body);
 
-// Start
-s1info(); s2reset(); syncS2(); s3reset(); syncS3();
-for (let i = 0; i < 200; i++) s1step();
-for (let i = 0; i < 400; i++) s3step(0.05);
+s2reset(); syncS2(); s3reset(); syncS3();
+for (let i = 0; i < 120; i++) s1step();
+for (let i = 0; i < 1200; i++) s3step(0.05);
 $('#shake').disabled = true;
-if (reduce) { startSim(); H.running = false; for (let i = 0; i < 600; i++) simStep(1 / 60); H.running = true; setStatus('Simulation bereit. Bewegung ist reduziert eingestellt; die Kurven laufen trotzdem, solange der Abschnitt sichtbar ist.'); }
-else startSim();
-const touch = matchMedia('(pointer: coarse)').matches;
-if (!touch) $('#how').textContent = 'Auf dem Rechner läuft eine Simulation. Auf einem Handy geöffnet, misst die Seite echte Daten: Handy flach halten und seitlich kippen.';
+startSim();
+if (!matchMedia('(pointer: coarse)').matches) $('#how').textContent = 'Auf dem Rechner läuft eine Simulation. Auf einem Handy geöffnet, misst die Seite echte Daten: Handy flach halten, seitlich kippen, dann schütteln.';
 if (document.fonts) document.fonts.ready.then(redraw);
 requestAnimationFrame(loop);
 })();
