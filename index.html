@@ -134,6 +134,26 @@ footer{border-top:1px solid var(--line);margin-top:8px;padding:22px 0 48px;font-
 .vals .m dd{color:var(--mark)}
 .ctls label.check{display:flex;align-items:center;gap:10px;grid-column:1/-1}
 .nw{white-space:nowrap}
+.kfwrap{overflow-x:auto;margin-top:28px;border-radius:10px;background:var(--surface)}
+.kfd{display:block;width:100%;min-width:680px;height:auto}
+.kfd text{font-family:var(--font-ui);font-size:13px;fill:var(--ink-2)}
+.kfd .t{font-size:17px;font-weight:650;fill:var(--ink)}
+.kfd .m{font-family:var(--font-text);font-size:17px;fill:var(--ink)}
+.kfd .box{fill:var(--bg);stroke:var(--line);stroke-width:1.5;transition:fill .15s}
+.kfd .pred{stroke:var(--amber);stroke-width:2.5}
+.kfd .corr{stroke:var(--accent);stroke-width:2.5}
+.kfd .corr.on{fill:var(--accent-soft)}
+.kfd .ar{stroke:var(--ink-2);stroke-width:1.6;fill:none}
+.kfd .arA{stroke:var(--amber);stroke-width:2;fill:none}
+.kfd .arM{stroke:var(--mark);stroke-width:2;fill:none}
+.kfd #kfSkip{opacity:.4;transition:opacity .2s}
+.kfd #kfSkip.on{opacity:1}
+.kfd #kfSkip path{stroke:var(--mark);stroke-dasharray:5 4}
+@media (prefers-reduced-motion:reduce){.kfd .box,.kfd #kfSkip{transition:none}}
+.sym th{color:var(--ink)!important}
+.sym td:first-child{white-space:nowrap;width:8.5em;font-family:var(--font-text);font-size:17px;color:var(--ink)}
+.sym tr.grp th{padding-top:26px;font-size:16px;font-weight:650;border-bottom:2px solid var(--line)}
+.sym td{color:var(--ink-2)}
 </style>
 </head>
 <body>
@@ -238,8 +258,55 @@ footer{border-top:1px solid var(--line);margin-top:8px;padding:22px 0 48px;font-
       <p>Der Zustand enthält neben der Position auch die Fahrtrichtung und die Drift des Drehratensensors. Das GPS misst beides nicht direkt; der Filter erschließt es aus der Abfolge der Positionen und korrigiert damit auch die Odometrie selbst. Weil die Bewegung über Sinus und Kosinus von der Fahrtrichtung abhängt, wird das Modell in jedem Schritt linearisiert: ein erweiterter Kalman-Filter.</p>
     </div>
     <figure class="fig">
+      <div class="kfwrap">
+      <svg class="kfd" viewBox="0 0 860 320" role="img" aria-labelledby="kfdT kfdD">
+        <title id="kfdT">Ablauf des Kalman-Filters</title>
+        <desc id="kfdD">Nach der Initialisierung wechseln sich in jedem Zeitschritt die Vorhersage mit der Odometrie und die Korrektur mit der GPS-Messung ab. Kommt keine Messung, folgt direkt die nächste Vorhersage.</desc>
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1 L9 5 L1 9 Z" style="fill:var(--ink-2)"/></marker>
+          <marker id="ahA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1 L9 5 L1 9 Z" style="fill:var(--amber)"/></marker>
+          <marker id="ahM" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1 L9 5 L1 9 Z" style="fill:var(--mark)"/></marker>
+        </defs>
+        <rect class="box" x="16" y="98" width="152" height="104" rx="10"/>
+        <text class="t" x="92" y="132" text-anchor="middle">Initialisierung</text>
+        <text class="m" x="92" y="160" text-anchor="middle"><tspan font-style="italic">x̂</tspan>₀,  <tspan font-style="italic">P</tspan>₀</text>
+        <text x="92" y="184" text-anchor="middle">Startwert, Startunsicherheit</text>
+        <path class="ar" d="M168 150 H212" marker-end="url(#ah)"/>
+        <rect class="box pred" x="216" y="78" width="250" height="144" rx="10"/>
+        <text class="t" x="341" y="106" text-anchor="middle">Vorhersage</text>
+        <text x="341" y="124" text-anchor="middle">Zeitupdate, in jedem Schritt</text>
+        <text class="m" x="341" y="156" text-anchor="middle"><tspan font-style="italic">x̂</tspan><tspan baseline-shift="super" font-size="12">−</tspan> = <tspan font-style="italic">f</tspan>(<tspan font-style="italic">x̂</tspan>, <tspan font-style="italic">u</tspan>)</text>
+        <text class="m" x="341" y="182" text-anchor="middle"><tspan font-style="italic">P</tspan><tspan baseline-shift="super" font-size="12">−</tspan> = <tspan font-style="italic">F P F</tspan><tspan baseline-shift="super" font-size="12">T</tspan> + <tspan font-style="italic">Q</tspan></text>
+        <text x="341" y="208" text-anchor="middle">Unsicherheit wächst</text>
+        <path class="arA" d="M341 26 V74" marker-end="url(#ahA)"/>
+        <text x="341" y="17" text-anchor="middle" style="fill:var(--amber);font-weight:600">Steuergröße <tspan font-style="italic">u</tspan>: Odometrie</text>
+        <path class="ar" d="M466 150 H520" marker-end="url(#ah)"/>
+        <text class="m" x="493" y="140" text-anchor="middle" style="font-size:14px"><tspan font-style="italic">x̂</tspan>⁻, <tspan font-style="italic">P</tspan>⁻</text>
+        <rect class="box corr" id="kfCorr" x="524" y="64" width="252" height="172" rx="10"/>
+        <text class="t" x="650" y="92" text-anchor="middle">Korrektur</text>
+        <text x="650" y="110" text-anchor="middle">Messupdate, sobald eine Messung da ist</text>
+        <text class="m" x="650" y="142" text-anchor="middle"><tspan font-style="italic">K</tspan> = <tspan font-style="italic">P</tspan><tspan baseline-shift="super" font-size="12">−</tspan><tspan font-style="italic">H</tspan><tspan baseline-shift="super" font-size="12">T</tspan> (<tspan font-style="italic">H P</tspan><tspan baseline-shift="super" font-size="12">−</tspan><tspan font-style="italic">H</tspan><tspan baseline-shift="super" font-size="12">T</tspan> + <tspan font-style="italic">R</tspan>)<tspan baseline-shift="super" font-size="12">−1</tspan></text>
+        <text class="m" x="650" y="168" text-anchor="middle"><tspan font-style="italic">x̂</tspan> = <tspan font-style="italic">x̂</tspan><tspan baseline-shift="super" font-size="12">−</tspan> + <tspan font-style="italic">K</tspan> (<tspan font-style="italic">z</tspan> − <tspan font-style="italic">H x̂</tspan><tspan baseline-shift="super" font-size="12">−</tspan>)</text>
+        <text class="m" x="650" y="194" text-anchor="middle"><tspan font-style="italic">P</tspan> = (<tspan font-style="italic">I</tspan> − <tspan font-style="italic">K H</tspan>) <tspan font-style="italic">P</tspan><tspan baseline-shift="super" font-size="12">−</tspan></text>
+        <text x="650" y="222" text-anchor="middle">Unsicherheit schrumpft</text>
+        <path class="arM" d="M650 26 V60" marker-end="url(#ahM)"/>
+        <text x="650" y="17" text-anchor="middle" style="fill:var(--mark);font-weight:600">Messung <tspan font-style="italic">z</tspan>: GPS</text>
+        <path class="ar" d="M776 150 H850" marker-end="url(#ah)"/>
+        <text x="813" y="140" text-anchor="middle">Ausgabe</text>
+        <text class="m" x="813" y="172" text-anchor="middle" style="font-size:15px"><tspan font-style="italic">x̂</tspan>, <tspan font-style="italic">P</tspan></text>
+        <path class="ar" d="M650 236 V286 H320 V226" marker-end="url(#ah)"/>
+        <text x="485" y="306" text-anchor="middle">nächster Zeitschritt <tspan font-style="italic">k</tspan> → <tspan font-style="italic">k</tspan> + 1: <tspan font-style="italic">x̂</tspan> und <tspan font-style="italic">P</tspan> werden zum Ausgangspunkt der nächsten Vorhersage</text>
+        <g id="kfSkip">
+          <path class="ar" d="M440 222 V256 H372 V226" marker-end="url(#ahM)"/>
+          <text x="448" y="260" style="fill:var(--mark)">ohne Messung (Tunnel)</text>
+        </g>
+      </svg>
+      </div>
+      <figcaption><b>Abb. 4</b>Ablauf des Kalman-Filters für das Fahrzeug unten. Nach der Initialisierung wechseln sich Vorhersage und Korrektur ab. Die Korrektur leuchtet auf, sobald ein GPS-Punkt verarbeitet wird; im Tunnel entfällt sie, und es folgt direkt die nächste Vorhersage.</figcaption>
+    </figure>
+    <figure class="fig">
       <canvas class="plot" id="cv-s3" aria-label="Rundkurs mit wahrer Position, Odometrie, GPS-Punkten und fusionierter Schätzung mit Unsicherheitsellipse"></canvas>
-      <figcaption><b>Abb. 4</b>Rundkurs aus der Vogelperspektive, Spuren der letzten 20 Sekunden. Die blaue Ellipse um die Fusion zeigt deren 2<var>σ</var>-Unsicherheit.</figcaption>
+      <figcaption><b>Abb. 5</b>Rundkurs aus der Vogelperspektive, Spuren der letzten 20 Sekunden. Die blaue Ellipse um die Fusion zeigt deren 2<var>σ</var>-Unsicherheit.</figcaption>
     </figure>
     <div class="row" style="margin-top:14px">
       <button type="button" class="btn solid" id="s3play"></button>
@@ -275,6 +342,47 @@ footer{border-top:1px solid var(--line);margin-top:8px;padding:22px 0 48px;font-
   <div class="prose" style="margin-top:28px">
     <p>Die Grundidee bleibt in allen Fällen die aus Schritt 1: unsichere Informationen nach ihrer Genauigkeit gewichten. Der Kalman-Filter macht daraus ein Verfahren, das die Genauigkeiten über die Zeit selbst mitführt.</p>
   </div>
+</section>
+<section class="extra" id="symbole" aria-labelledby="h-sym">
+  <h2 id="h-sym">Formelzeichen im Überblick</h2>
+  <div class="prose"><p>Dieselben Buchstaben tauchen in mehreren Schritten auf. In Schritt 2 sind <var>P</var>, <var>Q</var>, <var>R</var> und <var>K</var> einzelne Zahlen, in Schritt 3 werden daraus Matrizen, weil der Zustand mehrere Größen enthält. Die Bedeutung bleibt gleich.</p></div>
+  <div class="tablewrap"><table class="sym">
+    <tbody>
+      <tr class="grp"><th scope="colgroup" colspan="2">Schreibweise</th></tr>
+      <tr><td><var>x̂</var></td><td>Dach: geschätzter Wert, nicht der wahre</td></tr>
+      <tr><td><var>x̂</var><sup>−</sup>, <var>P</var><sup>−</sup></td><td>hochgestelltes Minus: Vorhersage, also der Wert vor der Korrektur mit der neuen Messung</td></tr>
+      <tr><td><var>A</var><sup>T</sup></td><td>transponierte Matrix</td></tr>
+      <tr><td>←</td><td>wird ersetzt durch: der neue Wert überschreibt den alten</td></tr>
+      <tr class="grp"><th scope="colgroup" colspan="2">Schritt 1: Zwei Sensoren</th></tr>
+      <tr><td><var>x</var><sub>A</sub>, <var>x</var><sub>B</sub></td><td>Messwerte von Sensor A (Radar) und Sensor B (Kamera), für jede Richtung getrennt</td></tr>
+      <tr><td><var>σ</var><sub>A</sub>, <var>σ</var><sub>B</sub></td><td>Standardabweichung der beiden Sensoren, also deren typischer Messfehler</td></tr>
+      <tr><td><var>σ</var><sup>2</sup></td><td>Varianz, das Quadrat der Standardabweichung; 1/<var>σ</var><sup>2</sup> ist das Gewicht eines Werts</td></tr>
+      <tr><td><var>x̂</var>, <var>σ</var></td><td>fusionierter Wert und seine Standardabweichung</td></tr>
+      <tr class="grp"><th scope="colgroup" colspan="2">Schritt 2: Messungen nacheinander</th></tr>
+      <tr><td><var>z</var></td><td>neuer Messwert</td></tr>
+      <tr><td><var>k</var></td><td>laufende Nummer der Messung</td></tr>
+      <tr><td><var>σ</var><sub>z</sub></td><td>Standardabweichung des Messrauschens</td></tr>
+      <tr><td><var>R</var></td><td>Varianz des Messrauschens, <var>R</var> = <var>σ</var><sub>z</sub><sup>2</sup>: wie ungenau eine einzelne Messung ist</td></tr>
+      <tr><td><var>P</var></td><td>Varianz der aktuellen Schätzung: wie unsicher der Filter gerade ist</td></tr>
+      <tr><td><var>K</var></td><td>Kalman-Verstärkung: Gewicht der neuen Messung, zwischen 0 (Messung ignorieren) und 1 (Messung übernehmen)</td></tr>
+      <tr><td><var>Q</var></td><td>Prozessrauschen: wie stark sich die gemessene Größe zwischen zwei Messungen ändern kann</td></tr>
+      <tr class="grp"><th scope="colgroup" colspan="2">Schritt 3: Odometrie und GPS</th></tr>
+      <tr><td><var>x̂</var> = [<var>x</var>, <var>y</var>, <var>ψ</var>, <var>b</var>]<sup>T</sup></td><td>Zustandsvektor des Filters: Position in Ost- und Nordrichtung, Fahrtrichtung und Drift des Drehratensensors</td></tr>
+      <tr><td><var>ψ</var></td><td>Fahrtrichtung (Gierwinkel)</td></tr>
+      <tr><td><var>b</var></td><td>Drift des Drehratensensors in °/s, die der Filter mitschätzt</td></tr>
+      <tr><td><var>x̂</var><sub>0</sub>, <var>P</var><sub>0</sub></td><td>Startwert und Startunsicherheit bei der Initialisierung</td></tr>
+      <tr><td><var>u</var></td><td>Steuergröße, die in die Vorhersage eingeht, hier Geschwindigkeit und Drehrate aus der Odometrie</td></tr>
+      <tr><td><var>I</var></td><td>Einheitsmatrix</td></tr>
+      <tr><td><var>f</var></td><td>Bewegungsmodell: rechnet den Zustand mit Geschwindigkeit und Drehrate aus der Odometrie einen Zeitschritt weiter</td></tr>
+      <tr><td><var>F</var></td><td>Jacobi-Matrix von <var>f</var>: die Linearisierung des Bewegungsmodells um die aktuelle Schätzung, die den Filter zum erweiterten Kalman-Filter macht</td></tr>
+      <tr><td><var>P</var>, <var>P</var><sup>−</sup></td><td>Kovarianzmatrix der Schätzung nach und vor der Korrektur; ihr Positionsteil ergibt die blaue Unsicherheitsellipse</td></tr>
+      <tr><td><var>Q</var></td><td>Kovarianzmatrix des Prozessrauschens: wie sehr der Filter der Odometrie misstraut</td></tr>
+      <tr><td><var>z</var><sub>GPS</sub></td><td>vom GPS gemessene Position</td></tr>
+      <tr><td><var>H</var></td><td>Messmatrix: wählt aus dem Zustand die Größen aus, die das GPS misst, hier <var>x</var> und <var>y</var></td></tr>
+      <tr><td><var>R</var></td><td>Kovarianzmatrix des GPS-Rauschens</td></tr>
+      <tr><td><var>K</var></td><td>Verstärkungsmatrix: wie stark eine GPS-Abweichung jede Zustandsgröße korrigiert, auch Fahrtrichtung und Drift</td></tr>
+    </tbody>
+  </table></div>
 </section>
 <footer>Alle Berechnungen und Simulationen laufen lokal im Browser. Sensordaten werden nicht übertragen.</footer>
 </div>
@@ -578,7 +686,7 @@ function s3step(dt) {
       for (let i = 0; i < 4; i++) S3.s[i] += K[i][0] * y[0] + K[i][1] * y[1];
       const IKH = K.map((r, i) => [0, 1, 2, 3].map(j => (i === j ? 1 : 0) - (j < 2 ? r[j] : 0)));
       S3.P = mm(IKH, P);
-      S3.gps.push([z[0], z[1], S3.t]); gErr = Math.hypot(z[0] - p[0], z[1] - p[1]);
+      S3.gps.push([z[0], z[1], S3.t]); S3.lastCorr = S3.t; gErr = Math.hypot(z[0] - p[0], z[1] - p[1]);
     }
   }
   S3.trT.push([...p]); S3.trO.push([...S3.odo]); S3.trF.push([S3.s[0], S3.s[1]]);
@@ -620,6 +728,8 @@ function drawS3() {
   const rms = j => { const arr = S3.errs.map(e => e[j]).filter(x => x != null); return arr.length ? Math.sqrt(arr.reduce((s, x) => s + x * x, 0) / arr.length) : NaN; };
   $('#e-odo').textContent = `${fmt(rms(1), 1)} m`; $('#e-gps').textContent = isFinite(rms(3)) ? `${fmt(rms(3), 1)} m` : 'kein Empfang'; $('#e-fus').textContent = `${fmt(rms(2), 1)} m`;
   $('#e-bias').textContent = `${fmt(S3.s[3] * DEG, 2)} °/s (wahr ${fmt(s3v.od, 1)} °/s)`;
+  $('#kfCorr').classList.toggle('on', !S3.tunnel && S3.t - (S3.lastCorr ?? -9) < 0.3);
+  $('#kfSkip').classList.toggle('on', S3.tunnel);
 }
 
 // ===================== Schleife =====================
