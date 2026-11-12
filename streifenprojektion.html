@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Streifenprojektion – interaktiv erklärt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#e6e9ed; --surface:#f5f6f8; --surface-2:#d6dce4; --ink:#141b25; --ink-2:#435063; --muted:#6b7686; --line:#c4cbd4;
+  --accent:#2a44d8; --accent-ink:#ffffff; --accent-soft:rgba(42,68,216,.12);
+  --mark:#d6245f; --fig:#cfd5dd;
+  --font-ui:"Schibsted Grotesk","Helvetica Neue",Arial,system-ui,sans-serif;
+  --font-text:"STIX Two Text",Cambria,Georgia,"Times New Roman",serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e141c; --surface:#151d28; --surface-2:#223042; --ink:#e4e9f0; --ink-2:#a9b3c1; --muted:#7c8797; --line:#324154;
+    --accent:#8593ff; --accent-ink:#0b1020; --accent-soft:rgba(133,147,255,.16);
+    --mark:#ff5c8f; --fig:#0a0f15;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e141c; --surface:#151d28; --surface-2:#223042; --ink:#e4e9f0; --ink-2:#a9b3c1; --muted:#7c8797; --line:#324154;
+  --accent:#8593ff; --accent-ink:#0b1020; --accent-soft:rgba(133,147,255,.16);
+  --mark:#ff5c8f; --fig:#0a0f15;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-text);font-size:18px;line-height:1.62;font-kerning:normal}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.skip{position:absolute;left:12px;top:-120px;z-index:99;background:var(--accent);color:var(--accent-ink);padding:10px 14px;border-radius:8px;font-family:var(--font-ui)}
+.skip:focus{top:calc(12px + env(safe-area-inset-top,0px))}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1280px;margin:0 auto;padding:0 28px}
+h1,h2,h3{font-family:var(--font-ui);color:var(--ink);line-height:1.15;margin:0}
+h2{font-size:32px;font-weight:700;letter-spacing:-.015em}
+h3{font-size:19px;font-weight:650}
+p{margin:0 0 .9em}
+var{font-family:var(--font-text);font-style:italic}
+sub,sup{font-size:.68em;line-height:0}
+a{color:var(--accent)}
+
+/* Hero */
+.hero{padding:28px 0 0}
+.hero-frame{border-radius:12px;overflow:hidden;background:#05080f;line-height:0}
+.hero-frame canvas{width:100%;height:auto;display:block}
+.hero-bar{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin-top:12px}
+.hero-cap{font-family:var(--font-ui);font-size:15px;line-height:1.45;color:var(--ink-2);margin:0;max-width:62ch;min-height:2.9em}
+.intro{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px 56px;margin:44px 0 72px;align-items:start}
+.intro .lead{font-size:23px;line-height:1.45;margin:0}
+.intro .sub{color:var(--ink-2);margin:0;font-size:17px}
+
+/* Controls */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;padding:2px;background:var(--bg);gap:2px}
+.seg button{font:500 14px/1 var(--font-ui);color:var(--ink-2);background:transparent;border:0;border-radius:7px;padding:9px 11px;cursor:pointer;flex:1 1 auto;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg button:hover:not([aria-pressed="true"]){color:var(--ink);background:var(--accent-soft)}
+.btn{font:600 14px/1.2 var(--font-ui);border-radius:8px;padding:10px 14px;cursor:pointer;border:1px solid var(--accent);background:transparent;color:var(--accent)}
+.btn:hover{background:var(--accent-soft)}
+.btn.solid{background:var(--accent);color:var(--accent-ink)}
+.btn.quiet{border-color:var(--line);color:var(--ink-2)}
+
+.layout{display:grid;grid-template-columns:292px minmax(0,1fr);gap:48px;align-items:start}
+.panel{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);max-height:calc(100vh - 32px - env(safe-area-inset-top,0px));overflow:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 18px 20px;font-family:var(--font-ui);font-size:15px;line-height:1.4}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.panel-head h2{font-size:19px;letter-spacing:0}
+.panel .close{display:none;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:20px;line-height:1;cursor:pointer}
+.panel h3{font-size:15px;font-weight:650;margin:22px 0 6px}
+.ctl{margin:0 0 15px}
+.ctl label,.ctl .lbl{display:flex;justify-content:space-between;gap:8px;align-items:baseline;color:var(--ink-2);margin-bottom:5px}
+.ctl output{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.panel .seg{display:flex;width:100%}
+select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0;--pct:50%;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(to right,var(--accent) var(--pct),var(--line) var(--pct))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);border:3px solid var(--surface);margin-top:-7px;box-shadow:0 0 0 1px var(--accent)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--line)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--accent)}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--accent);border:3px solid var(--surface);box-shadow:0 0 0 1px var(--accent)}
+.check{display:flex;gap:10px;align-items:center;cursor:pointer;color:var(--ink-2)}
+.check input{width:18px;height:18px;accent-color:var(--accent);margin:0}
+.ctl label.check{justify-content:flex-start;align-items:center;margin:0}
+[hidden]{display:none!important}
+.nw{white-space:nowrap}
+.ro{margin:4px 0 16px;display:grid;gap:6px}
+.ro div{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding-top:6px}
+.ro dt{color:var(--ink-2)}
+.ro dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.fab{display:none}
+
+/* Measurement chain */
+.chain{position:relative;padding-left:64px}
+.chain::before{content:"";position:absolute;left:19px;top:22px;bottom:60px;width:2px;background:var(--line)}
+.step{position:relative;margin:0 0 104px}
+.step .num{position:absolute;left:-64px;top:-3px;width:40px;height:40px;border-radius:50%;background:var(--bg);border:2px solid var(--accent);color:var(--accent);font:700 17px/36px var(--font-ui);text-align:center}
+.step h2,.extra h2{margin:0 0 18px}
+.prose{max-width:66ch}
+.eq{font-size:1.12em;margin:.3em 0 1.05em;padding-left:1.4em;line-height:2.2}
+.frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;line-height:1.25;margin:0 .12em}
+.frac>span:first-child{border-bottom:1px solid currentColor;padding:0 .25em .06em}
+.frac>span:last-child{padding:.06em .25em 0}
+.note{font-family:var(--font-ui);font-size:14.5px;line-height:1.5;color:var(--ink-2);border-left:2px solid var(--line);padding-left:12px}
+
+.figs{display:grid;gap:30px 22px;margin-top:28px}
+.figs.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.figs.s1{grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);align-items:start}
+.figs.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.fig{margin:0;min-width:0}
+.frame{position:relative;aspect-ratio:4/3;background:var(--fig);border-radius:8px;overflow:hidden;cursor:crosshair;touch-action:manipulation;-webkit-tap-highlight-color:transparent;--x:50%;--y:50%;--xh:#ff5c8f}
+.frame canvas{width:100%;height:100%;display:block}
+.xh{position:absolute;inset:0;pointer-events:none}
+.xh::before{content:"";position:absolute;left:0;right:0;top:var(--y);border-top:1px solid var(--xh);opacity:.8}
+.xh::after{content:"";position:absolute;top:0;bottom:0;left:var(--x);border-left:1px solid var(--xh);opacity:.8}
+.xh i{position:absolute;left:var(--x);top:var(--y);width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid var(--xh);border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+.fig.unused .frame{opacity:.4}
+figcaption{font-family:var(--font-ui);font-size:14px;line-height:1.45;color:var(--ink-2);margin-top:10px}
+figcaption b{color:var(--ink);font-weight:650;margin-right:.35em}
+.bar{display:inline-block;width:68px;height:9px;border-radius:2px;vertical-align:middle;margin:0 6px}
+.plot{width:100%;display:block;background:var(--surface);border-radius:8px}
+#cv-sig{aspect-ratio:4/3}
+#cv-side{aspect-ratio:15/8}
+#cv-prof{aspect-ratio:12/5}
+.tools{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-top:10px;font-family:var(--font-ui)}
+.chips{display:inline-flex;flex-wrap:wrap;gap:4px}
+.chips button{width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:600 13px/1 var(--font-ui);cursor:pointer}
+.chips button[aria-pressed="true"]{border-color:var(--mark);color:var(--mark);box-shadow:inset 0 0 0 1px var(--mark)}
+.vals{display:flex;flex-wrap:wrap;gap:4px 20px;margin:10px 0 0;font-family:var(--font-ui);font-size:14px}
+.vals div{display:flex;gap:6px}
+.vals dt{color:var(--ink-2)}
+.vals dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+.view3d{position:relative;aspect-ratio:16/10;max-height:72vh;width:100%;border-radius:10px;overflow:hidden;background:var(--fig);touch-action:pan-y;cursor:grab}
+.view3d:active{cursor:grabbing}
+.view3d canvas{width:100%;height:100%;display:block}
+.view3d .fallback{padding:24px;font-family:var(--font-ui);font-size:15px;color:var(--ink-2)}
+
+/* Experiments */
+.extra{margin:0 0 80px}
+.extra .prose{margin-bottom:8px}
+.xp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 40px;margin-top:20px}
+.xp article{border-top:1px solid var(--line);padding:20px 0 26px}
+.xp h3{margin:0 0 8px}
+.xp p{font-size:16.5px;color:var(--ink-2)}
+.xp .eq{font-size:1.05em;color:var(--ink)}
+.outro{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 40px;margin-top:40px}
+.outro p{font-size:16.5px;color:var(--ink-2)}
+.outro h3{margin:0 0 8px}
+@media (min-width:981px){.extra{padding-left:64px}}
+footer{border-top:1px solid var(--line);margin-top:8px;padding:22px 0 48px;font-family:var(--font-ui);font-size:14px;color:var(--muted)}
+
+@media (max-width:980px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .panel{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:60;max-height:56vh;border-radius:16px 16px 0 0;border-bottom:0;
+    transform:translateY(105%);visibility:hidden;transition:transform .28s ease,visibility 0s linear .28s;
+    padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px rgba(0,0,0,.28)}
+  .panel.open{transform:none;visibility:visible;transition:transform .28s ease}
+  .panel .close{display:inline-grid;place-items:center}
+  .fab{display:inline-flex;align-items:center;gap:8px;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:50;
+    font:600 15px/1 var(--font-ui);padding:13px 18px;border-radius:999px;border:0;background:var(--accent);color:var(--accent-ink);box-shadow:0 6px 18px rgba(0,0,0,.3);cursor:pointer}
+  .chain{padding-left:0}
+  .chain::before{display:none}
+  .step .num{position:static;display:block;margin-bottom:12px}
+  .intro{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  body{font-size:17px}
+  .wrap{padding:0 16px}
+  .figs.two,.figs.s1,.xp,.outro{grid-template-columns:minmax(0,1fr)}
+  .figs.three{gap:12px 10px}
+  h2{font-size:26px}
+  .intro .lead{font-size:20px}
+  .eq{padding-left:.4em;font-size:1.05em}
+  .hero{padding-top:16px}
+}
+@media (prefers-reduced-motion:reduce){
+  .panel{transition:none!important}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#app">Zur Simulation springen</a>
+<div class="wrap">
+<header class="hero">
+  <h1 class="sr-only">Streifenprojektion – interaktiv erklärt</h1>
+  <div class="hero-frame"><canvas id="hero" width="800" height="192" aria-hidden="true"></canvas></div>
+  <div class="hero-bar">
+    <p class="hero-cap" id="heroCap">Ein Schriftzug als flaches Relief, aufgenommen mit Streifenlicht. Wo die Oberfläche ansteigt, wandern die Streifen zur Seite.</p>
+    <div class="seg" role="group" aria-label="Darstellung des Reliefs" id="heroSeg">
+      <button type="button" data-v="cam" aria-pressed="true">Kamerabild</button>
+      <button type="button" data-v="phase" aria-pressed="false">Gewickelte Phase</button>
+      <button type="button" data-v="height" aria-pressed="false">Höhe</button>
+    </div>
+  </div>
+  <div class="intro">
+    <p class="lead">Streifenprojektion ist eines der wichtigsten Verfahren der optischen 3D-Messtechnik. Ein Projektor wirft sinusförmige Streifen auf ein Objekt, eine Kamera beobachtet sie aus einem anderen Winkel, und aus der Verformung der Streifen entsteht für jeden Kamerapixel ein Höhenwert.</p>
+    <p class="sub">Die Simulation unten bildet die komplette Messkette nach, vom Rohbild bis zur 3D-Oberfläche. Alle Parameter sind live veränderbar. Ein Klick oder Tipp in eine beliebige Abbildung setzt den Messpunkt, den alle Grafiken gemeinsam verfolgen.</p>
+  </div>
+</header>
+
+<div class="layout" id="app">
+  <aside class="panel" id="panel" aria-label="Parameter der Simulation">
+    <div class="panel-head"><h2>Messaufbau</h2><button type="button" class="close" id="panelClose" aria-label="Parameter schließen">×</button></div>
+    <div class="ctl"><label for="obj"><span>Messobjekt</span></label>
+      <select id="obj">
+        <option value="kugel">Kugelkappe</option>
+        <option value="gauss">Gauß-Hügel</option>
+        <option value="stufen">Stufenpyramide</option>
+        <option value="werkstueck">Werkstück mit Bohrung</option>
+        <option value="welle">Wellenfläche</option>
+      </select></div>
+    <div class="ctl"><label for="hmax"><span>Objekthöhe <var>h</var><sub>max</sub></span><output id="o-hmax"></output></label>
+      <input type="range" id="hmax" min="5" max="40" step="1"></div>
+    <div class="ctl"><label for="theta"><span>Triangulationswinkel <var>θ</var></span><output id="o-theta"></output></label>
+      <input type="range" id="theta" min="10" max="60" step="1"></div>
+    <div class="ctl"><label for="period"><span>Streifenperiode <var>p</var></span><output id="o-period"></output></label>
+      <input type="range" id="period" min="4" max="40" step="0.5"></div>
+    <div class="ctl"><span class="lbl" id="l-N"><span>Phasenschritte <var>N</var></span></span>
+      <div class="seg" role="group" aria-labelledby="l-N" data-key="N">
+        <button type="button" data-v="3">3</button><button type="button" data-v="4">4</button><button type="button" data-v="5">5</button><button type="button" data-v="6">6</button><button type="button" data-v="8">8</button>
+      </div></div>
+    <div class="ctl"><span class="lbl" id="l-unwrap"><span>Phase entfalten</span></span>
+      <div class="seg" role="group" aria-labelledby="l-unwrap" data-key="unwrap">
+        <button type="button" data-v="temporal">zeitlich</button><button type="button" data-v="spatial">räumlich</button>
+      </div></div>
+    <h3>Störeinflüsse</h3>
+    <div class="ctl"><label for="noise"><span>Kamerarauschen <var>σ</var></span><output id="o-noise"></output></label>
+      <input type="range" id="noise" min="0" max="20" step="1"></div>
+    <div class="ctl"><label for="gamma"><span>Projektor-Gamma <var>γ</var></span><output id="o-gamma"></output></label>
+      <input type="range" id="gamma" min="1" max="2.6" step="0.1"></div>
+    <div class="ctl"><label for="ambient"><span>Umgebungslicht</span><output id="o-ambient"></output></label>
+      <input type="range" id="ambient" min="0" max="80" step="5"></div>
+    <div class="ctl"><label class="check"><input type="checkbox" id="texture"> Textur auf der Oberfläche</label></div>
+    <h3>Ergebnis</h3>
+    <dl class="ro">
+      <div><dt>Aufnahmen pro Messung</dt><dd id="ro-img"></dd></div>
+      <div><dt>Empfindlichkeit</dt><dd id="ro-sens"></dd></div>
+      <div><dt>Höhenrauschen, Theorie</dt><dd id="ro-sig"></dd></div>
+      <div><dt>Abweichung (RMS)</dt><dd id="ro-rms"></dd></div>
+      <div><dt>Messbare Fläche</dt><dd id="ro-cov"></dd></div>
+      <div><dt>Ordnungsfehler</dt><dd id="ro-out"></dd></div>
+    </dl>
+    <button type="button" class="btn quiet" id="reset">Zurücksetzen</button>
+  </aside>
+
+  <main>
+    <div class="chain">
+      <section class="step" id="s1" aria-labelledby="h-s1">
+        <span class="num" aria-hidden="true">1</span>
+        <h2 id="h-s1">Triangulation: Höhe verschiebt Streifen</h2>
+        <div class="prose">
+          <p>Projektor und Kamera blicken aus verschiedenen Richtungen auf die Szene; der Winkel zwischen beiden heißt Triangulationswinkel <var>θ</var>. Auf der ebenen Referenzfläche liegen die projizierten Streifen gerade und gleichmäßig, mit der Periode <var>p</var>. Ragt das Objekt an einer Stelle um <var>h</var> heraus, trifft der Projektorstrahl die Oberfläche früher. Die Kamera sieht dort den Streifen, der ohne Objekt um Δ<var>x</var> versetzt gelegen hätte:</p>
+          <div class="eq">Δ<var>x</var> = <var>h</var> · tan <var>θ</var>,&emsp; Δ<var>φ</var> = <span class="frac"><span>2π</span><span><var>p</var></span></span> Δ<var>x</var> = <span class="frac"><span>2π tan <var>θ</var></span><span><var>p</var></span></span> · <var>h</var></div>
+          <p>Weil das Muster sinusförmig ist, entspricht der Versatz einer Phasenänderung Δ<var>φ</var>: Die Höhe steckt in der Phase. Der Faktor 2π tan <var>θ</var> / <var>p</var> ist die Empfindlichkeit des Aufbaus. Feinere Streifen und ein größerer Winkel liefern mehr Phase pro Millimeter Höhe.</p>
+          <p class="note">Vereinfachtes Modell: parallele Strahlenbündel, Kamera senkrecht von oben. Reale Systeme arbeiten mit perspektivischen Optiken und werden kalibriert; das Prinzip bleibt dasselbe.</p>
+        </div>
+        <div class="figs s1">
+          <figure class="fig">
+            <div class="frame" data-pick tabindex="0" aria-label="Höhenkarte des Messobjekts. Klicken oder Pfeiltasten setzen den Messpunkt."><canvas id="cv-truth" width="320" height="240"></canvas><div class="xh"><i></i></div></div>
+            <figcaption><b>Abb. 1a</b>Wahre Form, Draufsicht. Höhe <span class="nw">0<span class="bar" data-bar="v"></span><span data-t="hmax"></span> mm</span></figcaption>
+          </figure>
+          <figure class="fig">
+            <canvas class="plot" id="cv-side" aria-label="Seitenansicht mit Projektorstrahl, Sichtstrahl und Streifenversatz am Messpunkt"></canvas>
+            <figcaption><b>Abb. 1b</b>Schnitt entlang der markierten Zeile (<var>y</var> = <span id="cap-row"></span> mm). Blau: vom Projektor beleuchtete Oberfläche, helle Streifen als Strahlen.</figcaption>
+            <dl class="vals">
+              <div><dt>Am Messpunkt <var>h</var></dt><dd id="pt-h"></dd></div>
+              <div><dt>Δ<var>x</var></dt><dd id="pt-dx"></dd></div>
+              <div><dt>Δ<var>φ</var></dt><dd id="pt-dphi"></dd></div>
+            </dl>
+          </figure>
+        </div>
+      </section>
+
+      <section class="step" id="s2" aria-labelledby="h-s2">
+        <span class="num" aria-hidden="true">2</span>
+        <h2 id="h-s2">Phasenschieben: <var>N</var> Bilder, drei Unbekannte</h2>
+        <div class="prose">
+          <p>Aus einem einzigen Kamerabild lässt sich die Phase nicht sicher ablesen. Jeder Pixel hat drei Unbekannte: die Grundhelligkeit <var>A</var> (Umgebungslicht und Reflexionsgrad), die Modulation <var>B</var> (wie kräftig das Muster ankommt) und die gesuchte Phase <var>φ</var>.</p>
+          <div class="eq"><var>I<sub>n</sub></var> = <var>A</var> + <var>B</var> cos(<var>φ</var> + <var>δ<sub>n</sub></var>),&emsp; <var>δ<sub>n</sub></var> = <span class="frac"><span>2π<var>n</var></span><span><var>N</var></span></span>,&emsp; <var>n</var> = 0 … <var>N</var> − 1</div>
+          <p>Deshalb wird dasselbe Muster <var>N</var>-mal projiziert, jeweils um 2π/<var>N</var> verschoben; mindestens drei Bilder sind nötig, hier sind es <span id="nNow"></span>. Ein einzelner Pixel sieht dabei eine abgetastete Kosinuskurve. Aus seinen <var>N</var> Grauwerten lassen sich <var>A</var>, <var>B</var> und <var>φ</var> bestimmen – unabhängig von allen Nachbarpixeln.</p>
+        </div>
+        <div class="figs two">
+          <figure class="fig">
+            <div class="frame" data-pick tabindex="0" aria-label="Kamerabild. Klicken oder Pfeiltasten setzen den Messpunkt."><canvas id="cv-cam" width="320" height="240"></canvas><div class="xh"><i></i></div></div>
+            <div class="tools">
+              <button type="button" class="btn quiet" id="play"></button>
+              <div class="chips" id="chips" role="group" aria-label="Phasenschritt wählen"></div>
+              <div class="seg" role="group" aria-label="Streifenfrequenz" id="camSeg">
+                <button type="button" data-v="2" aria-pressed="true">fein</button><button type="button" data-v="1" aria-pressed="false">mittel</button><button type="button" data-v="0" aria-pressed="false">grob</button>
+              </div>
+            </div>
+            <figcaption><b>Abb. 2a</b>Kamerabild <span id="camInfo"></span></figcaption>
+          </figure>
+          <figure class="fig">
+            <canvas class="plot" id="cv-sig" aria-label="Grauwerte des Messpunkts über der Phasenverschiebung mit angepasster Kosinuskurve"></canvas>
+            <figcaption><b>Abb. 2b</b>Grauwerte des Messpunkts in allen <var>N</var> Aufnahmen (Punkte) und die daraus bestimmte Kosinuskurve. Die Lage des Maximums verrät die Phase.</figcaption>
+            <dl class="vals">
+              <div><dt><var>A</var></dt><dd id="pt-A"></dd></div>
+              <div><dt><var>B</var></dt><dd id="pt-B"></dd></div>
+              <div><dt><var>φ</var></dt><dd id="pt-phi"></dd></div>
+            </dl>
+          </figure>
+        </div>
+      </section>
+
+      <section class="step" id="s3" aria-labelledby="h-s3">
+        <span class="num" aria-hidden="true">3</span>
+        <h2 id="h-s3">Gewickelte Phase und Modulation</h2>
+        <div class="prose">
+          <p>Die Ausgleichsrechnung hat eine geschlossene Lösung. Mit <var>S</var> = Σ <var>I<sub>n</sub></var> sin <var>δ<sub>n</sub></var> und <var>C</var> = Σ <var>I<sub>n</sub></var> cos <var>δ<sub>n</sub></var> gilt:</p>
+          <div class="eq"><var>φ</var> = atan2(−<var>S</var>, <var>C</var>),&emsp; <var>B</var> = <span class="frac"><span>2</span><span><var>N</var></span></span> √(<var>S</var><sup>2</sup> + <var>C</var><sup>2</sup>),&emsp; <var>A</var> = <span class="frac"><span>1</span><span><var>N</var></span></span> Σ <var>I<sub>n</sub></var></div>
+          <p>Der Arkustangens liefert nur Werte zwischen −π und π. Das Ergebnis ist die gewickelte Phase: ein Sägezahn, der bei jedem Streifen von vorn beginnt. Die Höheninformation steckt schon darin, erkennbar daran, wie sich die Sägezähne über dem Objekt verbiegen.</p>
+          <p>Die Modulation <var>B</var> dient als Qualitätsmaß. Wo der Projektor nicht hinleuchtet oder die Oberfläche sehr dunkel ist, bleibt <var>B</var> im Rauschen; diese Pixel werden maskiert. Weil <var>A</var> und <var>B</var> bei der Phasenberechnung herausfallen, stören Texturen und Helligkeitsunterschiede die Messung kaum.</p>
+        </div>
+        <div class="figs two">
+          <figure class="fig">
+            <div class="frame" data-pick tabindex="0" aria-label="Gewickelte Phase. Klicken oder Pfeiltasten setzen den Messpunkt."><canvas id="cv-wrap" width="320" height="240"></canvas><div class="xh"><i></i></div></div>
+            <figcaption><b>Abb. 3a</b>Gewickelte Phase <var>φ</var> der feinen Streifen, schwarz −π bis weiß π</figcaption>
+          </figure>
+          <figure class="fig">
+            <div class="frame" data-pick tabindex="0" aria-label="Modulation. Klicken oder Pfeiltasten setzen den Messpunkt."><canvas id="cv-mod" width="320" height="240"></canvas><div class="xh"><i></i></div></div>
+            <figcaption><b>Abb. 3b</b>Modulation <var>B</var>. Rot: maskiert, weil <var>B</var> unter <span id="cap-thr"></span> Grauwerten liegt</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="step" id="s4" aria-labelledby="h-s4">
+        <span class="num" aria-hidden="true">4</span>
+        <h2 id="h-s4">Phase entfalten</h2>
+        <div class="prose">
+          <p>Um aus dem Sägezahn eine stetige Phase zu machen, muss für jeden Pixel feststehen, zum wievielten Streifen er gehört. Diese Streifenordnung <var>k</var> ergibt die absolute Phase:</p>
+          <div class="eq"><var>Φ</var> = <var>φ</var> + 2π<var>k</var></div>
+          <p><b>Räumliches Entfalten</b> vergleicht benachbarte Pixel und zählt jeden Sprung über π als Streifengrenze. Das braucht keine zusätzlichen Bilder, scheitert aber dort, wo sich die Phase zwischen zwei Pixeln um mehr als π ändert, etwa an Kanten und steilen Flanken, und an Lücken in den Daten. Ein einziger Fehler setzt sich dann über den Rest der Zeile fort.</p>
+          <p><b>Zeitliches Entfalten</b> bestimmt <var>k</var> für jeden Pixel einzeln aus weiteren Mustern, etwa einem Gray-Code oder zusätzlichen Streifenfrequenzen. Die Simulation nutzt drei Perioden. Die grobe ist größer als das Messfeld und damit eindeutig; jede Stufe sagt die Ordnung der nächstfeineren voraus:</p>
+          <div class="eq"><var>k</var> = round<span style="font-size:1.4em;vertical-align:-.12em">(</span><span class="frac"><span><var>Φ</var><sub>grob</sub> · <var>P</var><sub>grob</sub> / <var>P</var><sub>fein</sub> − <var>φ</var><sub>fein</sub></span><span>2π</span></span><span style="font-size:1.4em;vertical-align:-.12em">)</span></div>
+          <p>Die Simulation wendet das zweimal an, von grob auf mittel und von mittel auf fein. Der Preis sind mehr Aufnahmen: <span id="imgCount"></span></p>
+        </div>
+        <div class="figs three">
+          <figure class="fig" id="f-l0">
+            <div class="frame" data-pick tabindex="0" aria-label="Gewickelte Phase, grobe Streifen"><canvas id="cv-l0" width="320" height="240"></canvas><div class="xh"><i></i></div></div>
+            <figcaption><b>Abb. 4a</b>Grob, <var>P</var> = <span id="cap-P0"></span> mm</figcaption>
+          </figure>
+          <figure class="fig" id="f-l1">
+            <div class="frame" data-pick tabindex="0" aria-label="Gewickelte Phase, mittlere Streifen"><canvas id="cv-l1" width="320" height="240"></canvas><div class="xh"><i></i></div></div>
+            <figcaption><b>Abb. 4b</b>Mittel, <var>P</var> = <span id="cap-P1"></span> mm</figcaption>
+          </figure>
+          <figure class="fig">
+            <div class="frame" data-pick tabindex="0" aria-label="Gewickelte Phase, feine Streifen"><canvas id="cv-l2" width="320" height="240"></canvas><div class="xh"><i></i></div></div>
+            <figcaption><b>Abb. 4c</b>Fein, <var>p</var> = <span id="cap-P2"></span> mm</figcaption>
+          </figure>
+        </div>
+        <div class="figs two">
+          <figure class="fig">
+            <div class="frame" data-pick tabindex="0" aria-label="Streifenordnung. Klicken oder Pfeiltasten setzen den Messpunkt."><canvas id="cv-order" width="320" height="240"></canvas><div class="xh"><i></i></div></div>
+            <figcaption><b>Abb. 4d</b>Streifenordnung <var>k</var>, benachbarte Ordnungen abwechselnd heller und dunkler</figcaption>
+            <dl class="vals"><div><dt>Am Messpunkt <var>k</var></dt><dd id="pt-k"></dd></div><div><dt><var>Φ</var></dt><dd id="pt-Phi"></dd></div></dl>
+          </figure>
+          <figure class="fig">
+            <div class="frame" data-pick tabindex="0" aria-label="Phasendifferenz. Klicken oder Pfeiltasten setzen den Messpunkt."><canvas id="cv-dphi" width="320" height="240"></canvas><div class="xh"><i></i></div></div>
+            <figcaption><b>Abb. 4e</b>Phasendifferenz Δ<var>φ</var> = <var>Φ</var> − <var>Φ</var><sub>ref</sub>, <span class="nw">0<span class="bar" data-bar="v"></span><span id="cap-dmax"></span> rad</span></figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="step" id="s5" aria-labelledby="h-s5">
+        <span class="num" aria-hidden="true">5</span>
+        <h2 id="h-s5">Von der Phase zur Höhe</h2>
+        <div class="prose">
+          <p>Zieht man die Phase der leeren Referenzebene ab, bleibt die Phasendifferenz Δ<var>φ</var>. Sie ist proportional zur Höhe:</p>
+          <div class="eq"><var>h</var> = Δ<var>φ</var> · <span class="frac"><span><var>p</var></span><span>2π tan <var>θ</var></span></span></div>
+          <p>In realen Systemen ersetzt eine Kalibrierung diese einfache Formel. Der Projektor wird dabei wie eine umgekehrte Kamera behandelt: Die absolute Phase verrät, aus welcher Projektorspalte das Licht kam. Der Schnitt dieses Projektorstrahls mit dem Sichtstrahl des Kamerapixels ergibt einen 3D-Punkt, für jeden gültigen Pixel einen.</p>
+          <p>Die Fehlerkarte vergleicht das Ergebnis mit der wahren Form. Unter idealen Bedingungen bleibt nur Rauschen übrig; systematische Muster deuten auf Fehlerquellen hin, die weiter unten zum Ausprobieren bereitstehen.</p>
+        </div>
+        <div class="figs two">
+          <figure class="fig">
+            <div class="frame" data-pick tabindex="0" aria-label="Gemessene Höhe. Klicken oder Pfeiltasten setzen den Messpunkt."><canvas id="cv-rec" width="320" height="240"></canvas><div class="xh"><i></i></div></div>
+            <figcaption><b>Abb. 5a</b>Gemessene Höhe, <span class="nw">0<span class="bar" data-bar="v"></span><span data-t="hmax"></span> mm</span>, schraffiert: kein Messwert</figcaption>
+          </figure>
+          <figure class="fig">
+            <div class="frame" data-pick tabindex="0" aria-label="Abweichung zur wahren Form. Klicken oder Pfeiltasten setzen den Messpunkt."><canvas id="cv-err" width="320" height="240"></canvas><div class="xh"><i></i></div></div>
+            <figcaption><b>Abb. 5b</b>Abweichung zur wahren Form, <span class="nw">−<span class="cap-err"></span><span class="bar" data-bar="d"></span>+<span class="cap-err"></span></span></figcaption>
+          </figure>
+        </div>
+        <div class="figs">
+          <figure class="fig">
+            <canvas class="plot" id="cv-prof" aria-label="Profil der markierten Zeile: Phasen und Höhen"></canvas>
+            <figcaption><b>Abb. 5c</b>Profil entlang der markierten Zeile: oben die Phasen, unten wahre und gemessene Höhe</figcaption>
+            <dl class="vals">
+              <div><dt>Am Messpunkt gemessen</dt><dd id="pt-hm"></dd></div>
+              <div><dt>wahr</dt><dd id="pt-ht"></dd></div>
+              <div><dt>Abweichung</dt><dd id="pt-e"></dd></div>
+            </dl>
+          </figure>
+        </div>
+      </section>
+
+      <section class="step" id="s6" aria-labelledby="h-s6">
+        <span class="num" aria-hidden="true">6</span>
+        <h2 id="h-s6">3D-Rekonstruktion</h2>
+        <div class="prose">
+          <p>Jeder gültige Pixel wird zu einem 3D-Punkt, benachbarte Punkte werden zu Dreiecken verbunden. Lücken entstehen dort, wo maskiert wurde; Ordnungsfehler erscheinen als Zacken. Ziehen dreht die Ansicht, Mausrad oder zwei Finger zoomen, Doppelklick setzt sie zurück.</p>
+        </div>
+        <div class="figs">
+          <figure class="fig">
+            <div class="view3d" id="view3d" aria-label="Drehbare 3D-Ansicht der rekonstruierten Oberfläche"></div>
+            <div class="tools" id="tools3d">
+              <div class="seg" role="group" aria-label="Einfärbung" id="c3dSeg">
+                <button type="button" data-v="height" aria-pressed="true">Höhe</button><button type="button" data-v="cam" aria-pressed="false">Kamerabild</button><button type="button" data-v="err" aria-pressed="false">Abweichung</button>
+              </div>
+              <label class="check" style="font-size:14px"><input type="checkbox" id="autorot"> Automatisch drehen</label>
+              <button type="button" class="btn quiet" id="view3dReset">Ansicht zurücksetzen</button>
+            </div>
+            <figcaption><b>Abb. 6</b>Rekonstruierte Oberfläche im Maßstab 1 : 1, Messfeld 160 × 120 mm. Der Punkt markiert den Messpunkt.</figcaption>
+          </figure>
+        </div>
+      </section>
+    </div>
+
+    <section class="extra" id="fehler" aria-labelledby="h-fehler">
+      <h2 id="h-fehler">Fehlerquellen zum Ausprobieren</h2>
+      <div class="prose"><p>Jedes Experiment stellt die Parameter passend ein und springt zur aufschlussreichsten Abbildung. Danach lässt sich frei weiter variieren; „Zurücksetzen“ im Parameterbereich stellt den Ausgangszustand wieder her.</p></div>
+      <div class="xp">
+        <article>
+          <h3>Rauschen und Phasenschritte</h3>
+          <p>Kamerarauschen geht direkt in die Phase ein. Die Höhenunsicherheit sinkt mit mehr Phasenschritten, mehr Kontrast, feineren Streifen und größerem Winkel:</p>
+          <div class="eq"><var>σ<sub>h</sub></var> ≈ <span class="frac"><span><var>p</var></span><span>2π tan <var>θ</var></span></span> √(2/<var>N</var>) · <span class="frac"><span><var>σ<sub>I</sub></var></span><span><var>B</var></span></span></div>
+          <p>Das Experiment startet mit starkem Rauschen und <var>N</var> = 3. Danach <var>N</var> schrittweise erhöhen und die Abweichung im Ergebnis beobachten.</p>
+          <button type="button" class="btn" data-preset="noise">Starkes Rauschen einstellen</button>
+        </article>
+        <article>
+          <h3>Nichtlinearer Projektor</h3>
+          <p>Projektoren geben Helligkeit nicht linear wieder, aus dem Sinus wird eine verzerrte Kurve mit Oberwellen. Ein <var>N</var>-Schritt-Verfahren ist gegen Oberwellen bis zur Ordnung <var>N</var> − 2 unempfindlich. Bei <var>N</var> = 3 erscheint deshalb ein Wellenmuster in der Fehlerkarte, mit dreifacher Streifenfrequenz. Mit <var>N</var> = 4 schrumpft es bereits stark, mit <var>N</var> = 5 fast bis auf das Rauschniveau.</p>
+          <button type="button" class="btn" data-preset="gamma">Gamma 2,2 bei N = 3 einstellen</button>
+        </article>
+        <article>
+          <h3>Schatten</h3>
+          <p>Ein großer Triangulationswinkel macht den Aufbau empfindlicher, lässt aber Flächen hinter steilen Kanten im Schatten. Dort entsteht keine Modulation und damit kein Messwert. In echten Systemen kommen Bereiche hinzu, die die Kamera nicht sieht; viele Scanner arbeiten deshalb mit zwei Kameras.</p>
+          <button type="button" class="btn" data-preset="shadow">Werkstück bei θ = 55° einstellen</button>
+        </article>
+        <article>
+          <h3>Räumliches Entfalten an steilen Flanken</h3>
+          <p>Am steilen Rand einer hohen Kugelkappe springt die Phase von einem Pixel zum nächsten teils um mehr als π. In diesen Zeilen verzählt sich das räumliche Verfahren und trägt den Fehler bis zum Zeilenende weiter, sichtbar als waagerechte Streifen in Höhen- und Fehlerkarte. Zum Vergleich anschließend auf zeitliches Entfalten umschalten.</p>
+          <button type="button" class="btn" data-preset="spatial">Steile Kugelkappe räumlich entfalten</button>
+        </article>
+        <article>
+          <h3>Textur</h3>
+          <p>Ein Schachbrettmuster auf der Oberfläche verändert Grundhelligkeit und Kontrast, nicht aber die Phase. In der Höhenkarte bleibt davon nichts übrig; nur in den dunklen Feldern ist das Rauschen etwas höher.</p>
+          <button type="button" class="btn" data-preset="texture">Texturiertes Objekt einstellen</button>
+        </article>
+      </div>
+      <div class="outro">
+        <div>
+          <h3>Was die Simulation weglässt</h3>
+          <p>Glänzende Oberflächen und übersteuerte Pixel, Mehrfachreflexionen in Ecken, Lichtstreuung im Material (etwa bei Kunststoffen oder Haut), Bewegung während der Bildsequenz, Unschärfe, Linsenverzeichnung und Kalibrierfehler. In der Praxis helfen Mattierungsspray, Belichtungsreihen, Polarisationsfilter, schnelle Projektoren mit binären Mustern oder Einzelbildverfahren wie die Fourier-Transformations-Profilometrie.</p>
+        </div>
+        <div>
+          <h3>Wo das Verfahren eingesetzt wird</h3>
+          <p>Industrielle 3D-Scanner für Qualitätsprüfung und Reverse Engineering, Inline-Inspektion in der Fertigung, etwa von Lotpaste auf Leiterplatten, Medizin- und Dentaltechnik sowie die Digitalisierung von Kulturgut. Gemeinsam ist allen Anwendungen: eine dichte, berührungslose Messung mit einem Messwert pro Kamerapixel.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>Vereinfachtes Modell: parallele Projektion unter dem Winkel θ, Kamera senkrecht, 320 × 240 Pixel auf 160 × 120 mm, 8-Bit-Grauwerte. Alle Berechnungen laufen lokal im Browser.</footer>
+</div>
+
+<button type="button" class="fab" id="fab" aria-controls="panel" aria-expanded="false">Parameter</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+// ===== CORE-START =====
+const W = 320, H = 240, FOV_X = 160, PX = FOV_X / W, FOV_Y = H * PX;
+const TAU = Math.PI * 2;
+const P_COARSE = 1.8 * FOV_X, PHI0_COARSE = 0.5, GAIN = 190;
+const NOISE_LEN = 1 << 18, NOISE_MASK = NOISE_LEN - 1;
+const NOISE = (() => {
+  let s = 1234567;
+  const rnd = () => { s = (s * 1664525 + 1013904223) % 4294967296; return (s + 0.5) / 4294967296; };
+  const a = new Float32Array(NOISE_LEN);
+  for (let i = 0; i < NOISE_LEN; i += 2) {
+    const r = Math.sqrt(-2 * Math.log(rnd())), t = TAU * rnd();
+    a[i] = r * Math.cos(t); a[i + 1] = r * Math.sin(t);
+  }
+  return a;
+})();
+
+const smooth01 = t => (t <= 0 ? 0 : t >= 1 ? 1 : 0.5 - 0.5 * Math.cos(Math.PI * t));
+const OBJECTS = {
+  kugel: { f: (X, Y, m) => { const r2 = X * X + Y * Y; return r2 < 2500 ? m * Math.sqrt(1 - r2 / 2500) : 0; } },
+  gauss: { norm: true, f: (X, Y, m) => {
+    const g = (x0, y0, s, a) => a * Math.exp(-((X - x0) * (X - x0) + (Y - y0) * (Y - y0)) / (2 * s * s));
+    return m * (g(-34, -12, 17, 1) + g(26, 10, 20, 0.85) + g(-2, 32, 11, 0.6) + g(46, -34, 9, 0.55) + g(-56, 30, 8, 0.4));
+  } },
+  stufen: { f: (X, Y, m) => { const t = 1 - Math.max(Math.abs(X) / 62, Math.abs(Y) / 46); return t > 0 ? m * Math.ceil(t * 4) / 4 : 0; } },
+  werkstueck: { f: (X, Y, m) => {
+    if (Math.abs(X) >= 56 || Math.abs(Y) >= 38) return 0;
+    let h = 0.45 * m;
+    const bx = X + 26, by = Y; if (bx * bx + by * by < 169) h = 0.12 * m;
+    const dx = X - 24, dy = Y + 4, r2 = dx * dx + dy * dy; if (r2 < 400) h = 0.45 * m + 0.55 * m * Math.sqrt(1 - r2 / 400);
+    return h;
+  } },
+  welle: { f: (X, Y, m) => {
+    const w = smooth01((80 - Math.abs(X)) / 22) * smooth01((60 - Math.abs(Y)) / 18);
+    return m * w * (0.5 + 0.5 * Math.sin(TAU * X / 52) * Math.cos(TAU * Y / 42));
+  } }
+};
+
+function makeHeight(obj, hmax) {
+  const o = OBJECTS[obj] || OBJECTS.kugel, h = new Float32Array(W * H);
+  let mx = 0;
+  for (let j = 0; j < H; j++) {
+    const Y = (j + 0.5) * PX - FOV_Y / 2;
+    for (let i = 0; i < W; i++) {
+      const v = o.f((i + 0.5) * PX - FOV_X / 2, Y, hmax);
+      h[j * W + i] = v; if (v > mx) mx = v;
+    }
+  }
+  if (o.norm && mx > 0) { const s = hmax / mx; for (let k = 0; k < h.length; k++) h[k] *= s; }
+  return h;
+}
+const wrapPi = a => a - TAU * Math.round(a / TAU);
+
+function simulate(P) {
+  const n = W * H, N = P.N, p = P.period;
+  const th = P.theta * Math.PI / 180, tanT = Math.tan(th), sinT = Math.sin(th), cosT = Math.cos(th), cotT = 1 / tanT;
+  const h = makeHeight(P.obj, P.hmax);
+  const lit = new Uint8Array(n), amp = new Float32Array(n), u = new Float32Array(n), xs = new Float32Array(W);
+  for (let i = 0; i < W; i++) xs[i] = (i + 0.5) * PX;
+  // Schatten: Projektor links, parallele Strahlen unter θ
+  for (let j = 0; j < H; j++) {
+    let M = -Infinity;
+    for (let i = 0; i < W; i++) {
+      const k = j * W + i, v = h[k] + xs[i] * cotT;
+      lit[k] = v >= M - 1e-4 ? 1 : 0;
+      if (v > M) M = v;
+    }
+  }
+  for (let j = 0; j < H; j++) {
+    const Y = (j + 0.5) * PX - FOV_Y / 2;
+    for (let i = 0; i < W; i++) {
+      const k = j * W + i;
+      const hx = (h[i < W - 1 ? k + 1 : k] - h[i > 0 ? k - 1 : k]) / ((i > 0 && i < W - 1 ? 2 : 1) * PX);
+      const hy = (h[j < H - 1 ? k + W : k] - h[j > 0 ? k - W : k]) / ((j > 0 && j < H - 1 ? 2 : 1) * PX);
+      let s = (hx * sinT + cosT) / Math.sqrt(1 + hx * hx + hy * hy) / cosT;
+      s = s < 0 ? 0 : s > 1.25 ? 1.25 : s;
+      let alb = 1;
+      if (P.texture) { const X = xs[i] - FOV_X / 2; alb = ((Math.floor(X / 20) + Math.floor(Y / 20)) & 1) ? 0.4 : 1; }
+      amp[k] = GAIN * alb * s * lit[k];
+      u[k] = xs[i] + h[k] * tanT; // Projektorkoordinate
+    }
+  }
+  const Pm = Math.sqrt(P_COARSE * p);
+  const levels = [{ P: P_COARSE, phi0: PHI0_COARSE }, { P: Pm, phi0: 0 }, { P: p, phi0: 0 }];
+  const imgs = [], phis = [], Bs = [], As = [];
+  const useG = Math.abs(P.gamma - 1) > 1e-6;
+  levels.forEach((L, li) => {
+    const S = new Float32Array(n), C = new Float32Array(n), A = new Float32Array(n), list = [];
+    const kk = TAU / L.P;
+    for (let s = 0; s < N; s++) {
+      const d = TAU * s / N, sd = Math.sin(d), cd = Math.cos(d), ph = L.phi0 + d;
+      const img = new Uint8ClampedArray(n);
+      const off = (((li * 97 + s * 7919 + 13) * 2654435761) % 4294967296) & NOISE_MASK;
+      for (let k = 0; k < n; k++) {
+        let pat = 0.5 + 0.5 * Math.cos(kk * u[k] + ph);
+        if (useG) pat = pat > 0 ? Math.pow(pat, P.gamma) : 0;
+        img[k] = P.ambient + amp[k] * pat + P.noise * NOISE[(k + off) & NOISE_MASK];
+        const v = img[k];
+        S[k] += v * sd; C[k] += v * cd; A[k] += v;
+      }
+      list.push(img);
+    }
+    const phi = new Float32Array(n), B = new Float32Array(n);
+    for (let k = 0; k < n; k++) { phi[k] = Math.atan2(-S[k], C[k]); B[k] = 2 / N * Math.sqrt(S[k] * S[k] + C[k] * C[k]); A[k] /= N; }
+    imgs.push(list); phis.push(phi); Bs.push(B); As.push(A);
+  });
+
+  const sigEff = Math.sqrt(P.noise * P.noise + 1 / 12);
+  const thr = 3 * sigEff * Math.sqrt(2 / N) + 4;
+  const valid = new Uint8Array(n), Bf = Bs[2];
+  for (let k = 0; k < n; k++) valid[k] = Bf[k] > thr ? 1 : 0;
+
+  const Phi = new Float32Array(n), order = new Int16Array(n), dphi = new Float32Array(n), hRec = new Float32Array(n), err = new Float32Array(n);
+  const pc = phis[0], pm = phis[1], pf = phis[2];
+  if (P.unwrap === 'spatial') {
+    for (let j = 0; j < H; j++) {
+      let have = false, prevPhi = 0, prevPsi = 0;
+      for (let i = 0; i < W; i++) {
+        const k = j * W + i;
+        if (!valid[k]) { Phi[k] = NaN; continue; }
+        const psi = pf[k];
+        if (!have) { const ref = TAU * xs[i] / p; Phi[k] = ref + wrapPi(psi - ref); have = true; }
+        else Phi[k] = prevPhi + wrapPi(psi - prevPsi);
+        prevPhi = Phi[k]; prevPsi = psi;
+      }
+    }
+  } else {
+    for (let k = 0; k < n; k++) {
+      let c = pc[k]; if (c < 0) c += TAU;
+      const uc = (c - PHI0_COARSE) / TAU * P_COARSE;
+      const Um = pm[k] + TAU * Math.round((TAU * uc / Pm - pm[k]) / TAU);
+      const um = Um / TAU * Pm;
+      Phi[k] = pf[k] + TAU * Math.round((TAU * um / p - pf[k]) / TAU);
+    }
+  }
+  const ordThr = 0.5 * p / tanT;
+  let nValid = 0, nOut = 0, nOk = 0, ss = 0;
+  for (let k = 0; k < n; k++) {
+    const i = k % W;
+    if (valid[k] && Phi[k] === Phi[k]) {
+      order[k] = Math.round((Phi[k] - pf[k]) / TAU);
+      dphi[k] = Phi[k] - TAU * xs[i] / p;
+      hRec[k] = dphi[k] * p / (TAU * tanT);
+      const e = hRec[k] - h[k]; err[k] = e;
+      nValid++;
+      if (Math.abs(e) > ordThr) nOut++; else { ss += e * e; nOk++; }
+    } else { valid[k] = 0; order[k] = 0; dphi[k] = hRec[k] = err[k] = NaN; }
+  }
+  const sigPhi = Math.sqrt(2 / N) * sigEff / (GAIN / 2);
+  return {
+    P: { ...P }, h, lit, valid, imgs, phis, B: Bf, A: As[2], Phi, order, dphi, hRec, err, thr, tanT, Pm,
+    stats: {
+      rms: nOk ? Math.sqrt(ss / nOk) : NaN, cov: nValid / n, outFrac: nValid ? nOut / nValid : 0,
+      sigH: sigPhi * p / (TAU * tanT), images: P.unwrap === 'spatial' ? N : 3 * N,
+      sens: TAU * tanT / p, dmax: TAU * P.hmax * tanT / p
+    }
+  };
+}
+// ===== CORE-END =====
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmt = (v, d = 1) => {
+  if (!isFinite(v)) return '–';
+  const lim = 0.5 * Math.pow(10, -d);
+  const s = (Math.abs(v) < lim ? 0 : v).toFixed(d);
+  return s.replace('-', '−').replace('.', ',');
+};
+const hexRGB = h => { const m = /^#([0-9a-f]{6})$/i.exec((h || '').trim()); if (!m) return [42, 68, 216]; const n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+function theme() {
+  const cs = getComputedStyle(document.documentElement), g = n => cs.getPropertyValue(n).trim();
+  const accent = g('--accent');
+  return { ink: g('--ink'), ink2: g('--ink-2'), muted: g('--muted'), line: g('--line'), accent, accentRGB: hexRGB(accent),
+    mark: g('--mark'), surface: g('--surface'), surface2: g('--surface-2'), fig: g('--fig'), ui: g('--font-ui'), text: g('--font-text') };
+}
+
+// Farbskalen
+function makeLUT(stops) {
+  const lut = new Uint8Array(256 * 3);
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255; let a = 0;
+    while (a < stops.length - 2 && t > stops[a + 1][0]) a++;
+    const [t0, c0] = stops[a], [t1, c1] = stops[a + 1], f = clamp((t - t0) / (t1 - t0), 0, 1);
+    const A = hexRGB(c0), B = hexRGB(c1);
+    for (let c = 0; c < 3; c++) lut[i * 3 + c] = Math.round(A[c] + (B[c] - A[c]) * f);
+  }
+  return lut;
+}
+const V_STOPS = [[0, '#440154'], [0.125, '#472d7b'], [0.25, '#3b528b'], [0.375, '#2c728e'], [0.5, '#21918c'], [0.625, '#28ae80'], [0.75, '#5ec962'], [0.875, '#addc30'], [1, '#fde725']];
+const D_STOPS = [[0, '#053061'], [0.15, '#2166ac'], [0.3, '#4393c3'], [0.42, '#92c5de'], [0.5, '#f2f2f2'], [0.58, '#f4a582'], [0.7, '#d6604d'], [0.85, '#b2182b'], [1, '#67001f']];
+const LUT_V = makeLUT(V_STOPS), LUT_D = makeLUT(D_STOPS), LUT_G = makeLUT([[0, '#000000'], [1, '#ffffff']]);
+const gradCSS = st => `linear-gradient(90deg,${st.map(([t, c]) => `${c} ${t * 100}%`).join(',')})`;
+$$('[data-bar="v"]').forEach(b => { b.style.background = gradCSS(V_STOPS); });
+$$('[data-bar="d"]').forEach(b => { b.style.background = gradCSS(D_STOPS); });
+
+// Zustand
+const DEFAULTS = Object.freeze({ obj: 'kugel', hmax: 25, theta: 30, period: 10, N: 4, unwrap: 'temporal', noise: 2, gamma: 1, ambient: 15, texture: false });
+let P = { ...DEFAULTS };
+let R = null, errR = 0.05, dirty = true, selDirty = true;
+const sel = { i: 190, j: 100 };
+let step = 0, camLevel = 2, playing = !reduce, lastStep = 0, camVisible = true, color3d = 'height';
+
+// Bedienelemente
+const RANGES = {
+  hmax: v => `${fmt(v, 0)} mm`,
+  theta: v => `${fmt(v, 0)}°`,
+  period: v => `${fmt(v, 1)} mm (${fmt(v / PX, 0)} px)`,
+  noise: v => `${fmt(v, 0)} ${v === 1 ? 'Grauwert' : 'Grauwerte'}`,
+  gamma: v => fmt(v, 1),
+  ambient: v => `${fmt(v, 0)} Grauwerte`
+};
+function setRangeFill(el) { const mn = +el.min, mx = +el.max; el.style.setProperty('--pct', `${(+el.value - mn) / (mx - mn) * 100}%`); }
+function syncControls() {
+  $('#obj').value = P.obj;
+  Object.keys(RANGES).forEach(key => { const el = $('#' + key); el.value = P[key]; setRangeFill(el); $('#o-' + key).textContent = RANGES[key](P[key]); });
+  $('#texture').checked = P.texture;
+  $$('.panel .seg').forEach(g => { const key = g.dataset.key; $$('button', g).forEach(b => b.setAttribute('aria-pressed', String(String(P[key]) === b.dataset.v))); });
+}
+Object.keys(RANGES).forEach(key => {
+  const el = $('#' + key);
+  el.addEventListener('input', () => { P[key] = +el.value; setRangeFill(el); $('#o-' + key).textContent = RANGES[key](P[key]); dirty = true; });
+});
+$('#obj').addEventListener('change', e => { P.obj = e.target.value; dirty = true; });
+$('#texture').addEventListener('change', e => { P.texture = e.target.checked; dirty = true; });
+$$('.panel .seg').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const key = g.dataset.key; P[key] = key === 'N' ? +b.dataset.v : b.dataset.v;
+  syncControls(); dirty = true;
+}));
+$('#reset').addEventListener('click', () => { P = { ...DEFAULTS }; syncControls(); dirty = true; });
+
+// Mobile Parameter-Panel
+const panel = $('#panel'), fab = $('#fab');
+const setPanel = open => { panel.classList.toggle('open', open); fab.setAttribute('aria-expanded', String(open)); fab.textContent = open ? 'Schließen' : 'Parameter'; };
+fab.addEventListener('click', () => setPanel(!panel.classList.contains('open')));
+$('#panelClose').addEventListener('click', () => { setPanel(false); fab.focus(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel.classList.contains('open')) setPanel(false); });
+
+// Experimente
+const PRESETS = {
+  noise: { patch: { noise: 14, N: 3 }, target: '#s5' },
+  gamma: { patch: { gamma: 2.2, N: 3, noise: 0 }, target: '#s5' },
+  shadow: { patch: { obj: 'werkstueck', theta: 55, hmax: 30 }, target: '#s3' },
+  spatial: { patch: { obj: 'kugel', unwrap: 'spatial', theta: 45, period: 8, hmax: 40 }, target: '#s5' },
+  texture: { patch: { obj: 'gauss', texture: true, noise: 3 }, target: '#s2' }
+};
+$$('[data-preset]').forEach(b => b.addEventListener('click', () => {
+  const pr = PRESETS[b.dataset.preset];
+  P = { ...DEFAULTS, ...pr.patch }; syncControls(); dirty = true;
+  $(pr.target).scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+}));
+
+// Malen
+function ctxOf(cv) { if (!cv._ctx) { cv._ctx = cv.getContext('2d'); cv._img = cv._ctx.createImageData(cv.width, cv.height); } return cv._ctx; }
+function paint(cv, fn) {
+  const ctx = ctxOf(cv), img = cv._img, d = img.data;
+  for (let k = 0, o = 0; k < W * H; k++, o += 4) { fn(k, d, o); d[o + 3] = 255; }
+  ctx.putImageData(img, 0, 0);
+}
+function hatch(k, d, o) { const g = (((k % W) + ((k / W) | 0)) & 7) < 2 ? 84 : 52; d[o] = d[o + 1] = d[o + 2] = g; }
+function paintMap(cv, arr, lo, hi, lut, valid) {
+  const s = 255 / (hi - lo || 1);
+  paint(cv, (k, d, o) => {
+    const v = arr[k];
+    if ((valid && !valid[k]) || v !== v) return hatch(k, d, o);
+    let t = ((v - lo) * s) | 0; t = t < 0 ? 0 : t > 255 ? 255 : t;
+    d[o] = lut[t * 3]; d[o + 1] = lut[t * 3 + 1]; d[o + 2] = lut[t * 3 + 2];
+  });
+}
+function paintGray(cv, a) { paint(cv, (k, d, o) => { d[o] = d[o + 1] = d[o + 2] = a[k]; }); }
+function paintMod() {
+  const sc = 255 / (GAIN * 0.5 * 1.25);
+  paint($('#cv-mod'), (k, d, o) => {
+    const g = Math.min(255, R.B[k] * sc);
+    if (R.valid[k]) { d[o] = d[o + 1] = d[o + 2] = g; }
+    else { d[o] = 170 + g * 0.3; d[o + 1] = 32 + g * 0.2; d[o + 2] = 52 + g * 0.2; }
+  });
+}
+function paintOrder() {
+  let kmin = 1e9, kmax = -1e9;
+  for (let k = 0; k < W * H; k++) if (R.valid[k]) { const o = R.order[k]; if (o < kmin) kmin = o; if (o > kmax) kmax = o; }
+  const span = Math.max(1, kmax - kmin);
+  paint($('#cv-order'), (k, d, o) => {
+    if (!R.valid[k]) return hatch(k, d, o);
+    const ko = R.order[k], t = Math.round((ko - kmin) / span * 255), f = (ko & 1) ? 0.72 : 1;
+    d[o] = LUT_V[t * 3] * f; d[o + 1] = LUT_V[t * 3 + 1] * f; d[o + 2] = LUT_V[t * 3 + 2] * f;
+  });
+}
+function renderCam() {
+  if (!R) return;
+  const N = R.P.N, s = Math.min(step, N - 1);
+  paintGray($('#cv-cam'), R.imgs[camLevel][s]);
+  const lvl = ['grobe', 'mittlere', 'feine'][camLevel];
+  $('#camInfo').textContent = `${s + 1} von ${N}, δ = ${fmt(360 * s / N, 0)}°, ${lvl} Streifen`;
+  $$('#chips button').forEach((b, n) => b.setAttribute('aria-pressed', String(n === s)));
+}
+function syncChips() {
+  const box = $('#chips'), N = P.N;
+  if (box.children.length !== N) {
+    box.innerHTML = '';
+    for (let n = 0; n < N; n++) {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = n + 1;
+      b.setAttribute('aria-label', `Aufnahme ${n + 1}`);
+      b.addEventListener('click', () => { step = n; playing = false; syncPlay(); renderCam(); drawSig(); });
+      box.appendChild(b);
+    }
+  }
+}
+function syncPlay() { $('#play').textContent = playing ? 'Anhalten' : 'Abspielen'; }
+$('#play').addEventListener('click', () => { playing = !playing; syncPlay(); });
+$('#camSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  camLevel = +b.dataset.v;
+  $$('#camSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  renderCam(); drawSig();
+});
+
+function renderAll() {
+  const p = R.P, st = R.stats, hm = p.hmax;
+  syncChips();
+  paintMap($('#cv-truth'), R.h, 0, hm, LUT_V);
+  renderCam();
+  paintMap($('#cv-wrap'), R.phis[2], -Math.PI, Math.PI, LUT_G);
+  paintMod();
+  for (let l = 0; l < 3; l++) paintMap($('#cv-l' + l), R.phis[l], -Math.PI, Math.PI, LUT_G);
+  paintOrder();
+  paintMap($('#cv-dphi'), R.dphi, 0, st.dmax, LUT_V, R.valid);
+  paintMap($('#cv-rec'), R.hRec, 0, hm, LUT_V, R.valid);
+  errR = Math.max(0.01, 3 * (isFinite(st.rms) ? st.rms : 0.03));
+  paintMap($('#cv-err'), R.err, -errR, errR, LUT_D, R.valid);
+
+  $$('[data-t="hmax"]').forEach(e => { e.textContent = fmt(hm, 0); });
+  $('#cap-dmax').textContent = fmt(st.dmax, 1);
+  const errTxt = errR < 1 ? `${fmt(errR * 1000, 0)} µm` : `${fmt(errR, 2)} mm`;
+  $$('.cap-err').forEach(e => { e.textContent = errTxt; });
+  $('#cap-thr').textContent = fmt(R.thr, 0);
+  $('#cap-P0').textContent = fmt(P_COARSE, 0);
+  $('#cap-P1').textContent = fmt(R.Pm, 1);
+  $('#cap-P2').textContent = fmt(p.period, 1);
+  const spatial = p.unwrap === 'spatial';
+  ['#f-l0', '#f-l1'].forEach(s => $(s).classList.toggle('unused', spatial));
+  $('#nNow').textContent = `${p.N}`;
+  $('#imgCount').textContent = spatial
+    ? `Mit räumlichem Entfalten genügen die ${p.N} Aufnahmen der feinen Streifen; mit zeitlichem wären es ${3 * p.N}.`
+    : `Mit den aktuellen Einstellungen sind es ${3 * p.N} Aufnahmen pro Messung (3 Perioden × ${p.N} Schritte) statt ${p.N}.`;
+
+  $('#ro-img').textContent = `${st.images}`;
+  $('#ro-sens').textContent = `${fmt(st.sens, 2)} rad/mm`;
+  $('#ro-sig').textContent = `${fmt(st.sigH * 1000, 1)} µm`;
+  $('#ro-rms').textContent = isFinite(st.rms) ? `${fmt(st.rms * 1000, 1)} µm` : '–';
+  $('#ro-cov').textContent = `${fmt(st.cov * 100, 1)} %`;
+  $('#ro-out').textContent = `${fmt(st.outFrac * 100, st.outFrac > 0 && st.outFrac < 0.001 ? 3 : 1)} %`;
+  update3D();
+  renderSel();
+}
+
+function renderSel() {
+  if (!R) return;
+  const fx = `${(sel.i + 0.5) / W * 100}%`, fy = `${(sel.j + 0.5) / H * 100}%`;
+  $$('.frame[data-pick]').forEach(f => { f.style.setProperty('--x', fx); f.style.setProperty('--y', fy); });
+  const k = sel.j * W + sel.i, p = R.P, hs = R.h[k], dx = hs * R.tanT;
+  $('#cap-row').textContent = fmt((sel.j + 0.5) * PX - FOV_Y / 2, 1);
+  $('#pt-h').textContent = `${fmt(hs, 2)} mm${R.lit[k] ? '' : ', im Schatten'}`;
+  $('#pt-dx').textContent = `${fmt(dx, 2)} mm`;
+  $('#pt-dphi').textContent = `${fmt(TAU * dx / p.period, 2)} rad`;
+  $('#pt-A').textContent = fmt(R.A[k], 1);
+  $('#pt-B').textContent = fmt(R.B[k], 1);
+  $('#pt-phi').textContent = `${fmt(R.phis[2][k], 3)} rad`;
+  const ok = R.valid[k];
+  $('#pt-k').textContent = ok ? fmt(R.order[k], 0) : 'maskiert';
+  $('#pt-Phi').textContent = ok ? `${fmt(R.Phi[k], 2)} rad` : '–';
+  $('#pt-hm').textContent = ok ? `${fmt(R.hRec[k], 3)} mm` : 'kein Messwert';
+  $('#pt-ht').textContent = `${fmt(hs, 3)} mm`;
+  $('#pt-e').textContent = ok ? (Math.abs(R.err[k]) < 1 ? `${fmt(R.err[k] * 1000, 1)} µm` : `${fmt(R.err[k], 2)} mm`) : '–';
+  drawSide(); drawSig(); drawProf(); mark3D();
+}
+
+// Messpunkt wählen
+function setSel(i, j) { sel.i = clamp(i | 0, 0, W - 1); sel.j = clamp(j | 0, 0, H - 1); selDirty = true; }
+$$('.frame[data-pick]').forEach(frame => {
+  let drag = false, lastType = 'mouse';
+  const pickAt = e => { const r = frame.getBoundingClientRect(); setSel(Math.floor((e.clientX - r.left) / r.width * W), Math.floor((e.clientY - r.top) / r.height * H)); };
+  frame.addEventListener('pointerdown', e => { lastType = e.pointerType; if (e.pointerType !== 'touch') { drag = true; frame.setPointerCapture(e.pointerId); pickAt(e); } });
+  frame.addEventListener('pointermove', e => { if (drag) pickAt(e); });
+  const end = () => { drag = false; };
+  frame.addEventListener('pointerup', end); frame.addEventListener('pointercancel', end);
+  frame.addEventListener('click', e => { if (lastType === 'touch') pickAt(e); });
+  frame.addEventListener('keydown', e => {
+    const st = e.shiftKey ? 10 : 2; let di = 0, dj = 0;
+    if (e.key === 'ArrowLeft') di = -st; else if (e.key === 'ArrowRight') di = st; else if (e.key === 'ArrowUp') dj = -st; else if (e.key === 'ArrowDown') dj = st; else return;
+    e.preventDefault(); setSel(sel.i + di, sel.j + dj);
+  });
+});
+
+// Hilfsfunktionen für Diagramme
+function prep(cv) {
+  const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(10, Math.round(r.width * dpr)), h = Math.max(10, Math.round(r.height * dpr));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w: Math.max(10, r.width), h: Math.max(10, r.height) };
+}
+function line(ctx, x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+function dot(ctx, x, y, r, fill) { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = fill; ctx.fill(); }
+
+// Abb. 1b: Seitenansicht
+function drawSide() {
+  if (!R) return;
+  const cv = $('#cv-side'), { ctx, w, h } = prep(cv), C = theme();
+  ctx.clearRect(0, 0, w, h);
+  const p = R.P, th = p.theta * Math.PI / 180, tanT = R.tanT, sinT = Math.sin(th), cosT = Math.cos(th);
+  const x0 = -10, x1 = 170, s = w / (x1 - x0), zMin = -21, zMax = zMin + h / s;
+  const X = x => (x - x0) * s, Z = z => h - (z - zMin) * s;
+  const row = sel.j * W;
+  const hAt = x => { const f = x / PX - 0.5; if (f <= 0) return R.h[row]; if (f >= W - 1) return R.h[row + W - 1]; const i = Math.floor(f), t = f - i; return R.h[row + i] * (1 - t) + R.h[row + i + 1] * t; };
+  const [ar, ag, ab] = C.accentRGB;
+  ctx.font = `500 12px ${C.ui}`;
+
+  // Streifenmuster der Referenzebene
+  for (let i = 0; i < W; i++) {
+    const v = 0.5 + 0.5 * Math.cos(TAU * (i + 0.5) * PX / p.period);
+    ctx.fillStyle = `rgba(${ar},${ag},${ab},${(0.06 + 0.85 * v).toFixed(3)})`;
+    ctx.fillRect(X(i * PX), Z(-3), PX * s + 0.6, 5 * s);
+  }
+  // Strahlen der hellen Streifen
+  const zTop = zMax - 4;
+  ctx.lineWidth = 1; ctx.strokeStyle = `rgba(${ar},${ag},${ab},0.3)`;
+  const every = p.period < 7 ? 2 : 1;
+  for (let m = 0; ; m++) {
+    const u = m * p.period; if (u > FOV_X + p.hmax * tanT + 1) break;
+    if (m % every) continue;
+    let zHit = 0, xHit = u;
+    for (let z = Math.min(zTop, 60); z > 0; z -= 0.25) { const x = u - z * tanT; if (x >= 0 && x <= FOV_X && z <= hAt(x)) { zHit = z; xHit = x; break; } }
+    line(ctx, X(u - zTop * tanT), Z(zTop), X(xHit), Z(zHit));
+  }
+  // Objekt
+  ctx.beginPath(); ctx.moveTo(X(0), Z(0));
+  for (let i = 0; i < W; i++) ctx.lineTo(X((i + 0.5) * PX), Z(R.h[row + i]));
+  ctx.lineTo(X(FOV_X), Z(0)); ctx.closePath(); ctx.fillStyle = C.surface2; ctx.fill();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let i = 0; i < W; i++) { const x = X((i + 0.5) * PX), y = Z(R.h[row + i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.stroke();
+  ctx.strokeStyle = C.accent; ctx.lineWidth = 3; ctx.beginPath();
+  let on = false;
+  for (let i = 0; i < W; i++) { const x = X((i + 0.5) * PX), y = Z(R.h[row + i]); if (R.lit[row + i]) { on ? ctx.lineTo(x, y) : ctx.moveTo(x, y); on = true; } else on = false; }
+  ctx.stroke();
+
+  // Messpunkt, Sichtstrahl, Projektorstrahl
+  const i = sel.i, k = row + i, xs = (i + 0.5) * PX, hs = R.h[k], u = xs + hs * tanT, lit = R.lit[k] === 1;
+  const camZ = zMax - 10;
+  ctx.strokeStyle = C.mark; ctx.lineWidth = 1.5; ctx.setLineDash([]);
+  line(ctx, X(xs), Z(camZ - 3), X(xs), Z(hs));
+  ctx.fillStyle = C.ink;
+  ctx.fillRect(X(xs - 7), Z(camZ + 5), 14 * s, 5 * s);
+  ctx.fillRect(X(xs - 3), Z(camZ), 6 * s, 3 * s);
+  ctx.textAlign = xs > 120 ? 'right' : 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = C.ink2;
+  ctx.fillText('Kamera', xs > 120 ? X(xs - 10) : X(xs + 10), Z(camZ + 2.5));
+
+  const tEnd = Math.max(5, Math.min((zMax - 4 - hs - 26 / s * cosT) / cosT, (xs - x0 - 2 - 26 / s * sinT) / sinT));
+  const pxp = xs - tEnd * sinT, pzp = hs + tEnd * cosT;
+  ctx.strokeStyle = lit ? C.accent : C.muted; ctx.lineWidth = 2; ctx.setLineDash(lit ? [] : [5, 4]);
+  line(ctx, X(pxp), Z(pzp), X(xs), Z(hs));
+  ctx.setLineDash([]);
+  ctx.save(); ctx.translate(X(pxp), Z(pzp)); ctx.rotate(Math.atan2(-cosT, -sinT));
+  ctx.fillStyle = C.ink; ctx.fillRect(0, -6, 26, 12); ctx.fillRect(-4, -3.5, 5, 7);
+  ctx.restore();
+  ctx.fillStyle = C.ink2; ctx.textBaseline = 'middle';
+  if (X(pxp) > 70) { ctx.textAlign = 'right'; ctx.fillText('Projektor', X(pxp) - 6, Z(pzp) + 16); }
+  else { ctx.textAlign = 'left'; ctx.fillText('Projektor', X(pxp) + 4, Math.max(10, Z(pzp) - 20)); }
+  if (hs > 0.05) {
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = C.accent; ctx.lineWidth = 1.5;
+    line(ctx, X(xs), Z(hs), X(u), Z(0));
+    ctx.strokeStyle = C.mark; ctx.setLineDash([2, 3]); ctx.lineWidth = 1.2;
+    line(ctx, X(xs), Z(hs), X(xs), Z(0));
+    ctx.setLineDash([]);
+    ctx.fillStyle = C.mark; ctx.font = `italic 15px ${C.text}`; ctx.textAlign = 'right';
+    if (hs * s > 18) ctx.fillText('h', X(xs) - 5, Z(hs / 2));
+  }
+  // Winkel θ
+  const ra = 30;
+  ctx.strokeStyle = C.ink2; ctx.lineWidth = 1; ctx.beginPath();
+  ctx.arc(X(xs), Z(hs), ra, -Math.PI / 2 - th, -Math.PI / 2); ctx.stroke();
+  const am = -Math.PI / 2 - th / 2;
+  ctx.fillStyle = C.ink; ctx.font = `italic 15px ${C.text}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('θ', X(xs) + Math.cos(am) * (ra + 10), Z(hs) + Math.sin(am) * (ra + 10));
+  dot(ctx, X(xs), Z(hs), 4.5, C.mark);
+  if (!lit) { ctx.font = `500 12px ${C.ui}`; ctx.fillStyle = C.ink2; ctx.textAlign = 'left'; ctx.fillText('liegt im Schatten', X(xs) + 9, Z(hs) - 12); }
+
+  // Δx-Klammer
+  ctx.font = `500 12px ${C.ui}`;
+  const yb = Z(-11);
+  if (Math.abs(u - xs) > 0.4) {
+    ctx.strokeStyle = C.mark; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
+    line(ctx, X(xs), Z(0), X(xs), yb); line(ctx, X(u), Z(0), X(u), yb);
+    ctx.setLineDash([]); ctx.lineWidth = 1.5;
+    line(ctx, X(xs), yb, X(u), yb); line(ctx, X(xs), yb - 4, X(xs), yb + 4); line(ctx, X(u), yb - 4, X(u), yb + 4);
+    ctx.fillStyle = C.mark; ctx.textBaseline = 'middle';
+    const right = X(u) + 6 + 70 < w;
+    ctx.textAlign = right ? 'left' : 'right';
+    ctx.fillText(`Δx = ${fmt(u - xs, 1)} mm`, right ? X(u) + 6 : X(xs) - 6, yb);
+  }
+  ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(`Referenzebene, Streifenperiode p = ${fmt(p.period, 1)} mm`, X(0), Z(-19));
+}
+
+// Abb. 2b: Signal am Messpunkt
+function drawSig() {
+  if (!R) return;
+  const cv = $('#cv-sig'), { ctx, w, h } = prep(cv), C = theme();
+  ctx.clearRect(0, 0, w, h);
+  const L = 44, Rr = 14, T = 24, B = 44, pw = w - L - Rr, ph = h - T - B;
+  const X = d => L + d / TAU * pw, Y = v => T + (1 - v / 255) * ph;
+  ctx.font = `500 12px ${C.ui}`; ctx.lineWidth = 1;
+  ctx.strokeStyle = C.line; ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  [0, 64, 128, 192, 255].forEach(v => { line(ctx, L, Y(v), L + pw, Y(v)); ctx.fillText(String(v), L - 8, Y(v)); });
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ['0', 'π/2', 'π', '3π/2', '2π'].forEach((t, n) => { const x = X(n * Math.PI / 2); line(ctx, x, T, x, T + ph); ctx.fillText(t, x, T + ph + 7); });
+  ctx.textAlign = 'left'; ctx.fillText('Grauwert', 4, 4);
+  ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText('Phasenverschiebung δ', w - Rr, h - 2);
+
+  const k = sel.j * W + sel.i, N = R.P.N;
+  const lvl = camLevel, imgs = R.imgs[lvl];
+  // für die gezeigte Frequenz Kurve aus den Abtastwerten bestimmen
+  let S = 0, Cc = 0, Am = 0;
+  for (let s = 0; s < N; s++) { const d = TAU * s / N, v = imgs[s][k]; S += v * Math.sin(d); Cc += v * Math.cos(d); Am += v; }
+  const phi = Math.atan2(-S, Cc), Bv = 2 / N * Math.hypot(S, Cc); Am /= N;
+  const dm = ((-phi % TAU) + TAU) % TAU;
+  ctx.strokeStyle = C.muted; ctx.setLineDash([4, 4]); line(ctx, X(dm), T, X(dm), T + ph); ctx.setLineDash([]);
+  ctx.fillStyle = C.ink2; ctx.textBaseline = 'bottom'; ctx.textAlign = dm > Math.PI ? 'right' : 'left';
+  ctx.fillText('Maximum bei δ = −φ', X(dm) + (dm > Math.PI ? -6 : 6), T - 4);
+  ctx.strokeStyle = C.accent; ctx.lineWidth = 2; ctx.beginPath();
+  for (let q = 0; q <= 240; q++) { const d = q / 240 * TAU, v = clamp(Am + Bv * Math.cos(phi + d), -10, 265); q ? ctx.lineTo(X(d), Y(v)) : ctx.moveTo(X(d), Y(v)); }
+  ctx.stroke();
+  for (let s = 0; s < N; s++) {
+    const d = TAU * s / N, v = imgs[s][k], cur = s === Math.min(step, N - 1);
+    if (cur) { ctx.strokeStyle = C.mark; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(d), Y(v), 9, 0, TAU); ctx.stroke(); }
+    dot(ctx, X(d), Y(v), 5, cur ? C.mark : C.ink);
+  }
+  if (lvl === 2 && !R.valid[k]) {
+    ctx.fillStyle = C.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `600 13px ${C.ui}`;
+    ctx.fillText('Maskiert: Modulation zu gering', L + pw / 2, T + ph * 0.18);
+  }
+}
+
+// Abb. 5c: Profil
+function drawProf() {
+  if (!R) return;
+  const cv = $('#cv-prof'), { ctx, w, h } = prep(cv), C = theme();
+  ctx.clearRect(0, 0, w, h);
+  ctx.font = `500 12px ${C.ui}`;
+  const L = 52, Rr = 14, T = 26, B = 26, gap = 34;
+  const pw = w - L - Rr, tot = h - T - B - gap, h1 = tot * 0.42, h2 = tot - h1, top2 = T + h1 + gap;
+  const X = x => L + x / FOV_X * pw;
+  const row = sel.j * W, p = R.P;
+  let pMax = Math.PI;
+  for (let i = 0; i < W; i++) { const v = R.dphi[row + i]; if (v > pMax) pMax = v; }
+  pMax = Math.min(pMax, R.stats.dmax * 1.4 + Math.PI);
+  const pMin = -Math.PI;
+  const Y1 = v => T + (1 - (clamp(v, pMin, pMax) - pMin) / (pMax - pMin)) * h1;
+  const hMin = -0.15 * p.hmax, hMax = 1.25 * p.hmax;
+  const Y2 = v => top2 + (1 - (clamp(v, hMin, hMax) - hMin) / (hMax - hMin)) * h2;
+  ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  [[-Math.PI, '−π'], [0, '0'], [Math.PI, 'π']].forEach(([v, t]) => { line(ctx, L, Y1(v), L + pw, Y1(v)); ctx.fillText(t, L - 8, Y1(v)); });
+  if (pMax > 2.2 * Math.PI) { const v = Math.floor(pMax); line(ctx, L, Y1(v), L + pw, Y1(v)); ctx.fillText(`${v} rad`, L - 8, Y1(v)); }
+  [[0, '0'], [p.hmax, `${fmt(p.hmax, 0)} mm`]].forEach(([v, t]) => { line(ctx, L, Y2(v), L + pw, Y2(v)); ctx.fillText(t, L - 8, Y2(v)); });
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  [0, 40, 80, 120, 160].forEach(x => { ctx.fillText(x === 160 ? '160 mm' : String(x), clamp(X(x), L + 10, w - 26), top2 + h2 + 8); });
+  const series = (get, Y, color, lw) => {
+    ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath(); let on = false;
+    for (let i = 0; i < W; i++) { const v = get(i); if (v !== v) { on = false; continue; } const x = X((i + 0.5) * PX), y = Y(v); on ? ctx.lineTo(x, y) : ctx.moveTo(x, y); on = true; }
+    ctx.stroke();
+  };
+  series(i => R.phis[2][row + i], Y1, C.muted, 1);
+  series(i => R.dphi[row + i], Y1, C.accent, 2);
+  series(i => R.h[row + i], Y2, C.ink, 1.5);
+  series(i => R.hRec[row + i], Y2, C.accent, 2);
+  const legend = (y, items) => {
+    let x = L; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    items.forEach(([t, c, lw]) => { ctx.strokeStyle = c; ctx.lineWidth = lw; line(ctx, x, y, x + 18, y); ctx.fillStyle = C.ink2; ctx.fillText(t, x + 24, y); x += 34 + ctx.measureText(t).width; });
+  };
+  legend(T - 14, [['gewickelte Phase φ', C.muted, 1], ['Phasendifferenz Δφ', C.accent, 2]]);
+  legend(top2 - 14, [['wahre Höhe', C.ink, 1.5], ['gemessen', C.accent, 2]]);
+  const xs = X((sel.i + 0.5) * PX);
+  ctx.strokeStyle = C.mark; ctx.lineWidth = 1.2; line(ctx, xs, T, xs, T + h1); line(ctx, xs, top2, xs, top2 + h2);
+}
+
+// Abb. 6: 3D
+const V = { ok: false, needs: true, auto: !reduce, visible: true, az: -0.55, el: 0.62, r: 215 };
+function init3D() {
+  const box = $('#view3d');
+  const fail = () => { box.style.aspectRatio = 'auto'; box.innerHTML = '<p class="fallback">Die 3D-Ansicht benötigt WebGL, das in diesem Browser nicht verfügbar ist. Alle anderen Abbildungen funktionieren weiterhin.</p>'; $('#tools3d').hidden = true; };
+  if (!window.THREE) return fail();
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ antialias: true }); } catch (e) { return fail(); }
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  box.appendChild(renderer.domElement);
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(35, 1.6, 1, 3000);
+  const GW = W / 2, GH = H / 2;
+  const pos = new Float32Array(GW * GH * 3), col = new Float32Array(GW * GH * 3), idx = new Uint16Array((GW - 1) * (GH - 1) * 6);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  const matLit = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  const matFlat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(geo, matLit); scene.add(mesh);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(-0.7, 1.6, 0.9); scene.add(dl);
+  const gpts = [];
+  for (let x = -80; x <= 80; x += 20) gpts.push(new THREE.Vector3(x, 0, -60), new THREE.Vector3(x, 0, 60));
+  for (let z = -60; z <= 60; z += 20) gpts.push(new THREE.Vector3(-80, 0, z), new THREE.Vector3(80, 0, z));
+  const gridMat = new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.6 });
+  const grid = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(gpts), gridMat); grid.position.y = -0.05; scene.add(grid);
+  const marker = new THREE.Mesh(new THREE.SphereGeometry(1.8, 16, 12), new THREE.MeshBasicMaterial({ color: 0xff5c8f })); scene.add(marker);
+  Object.assign(V, { ok: true, renderer, scene, cam, geo, pos, col, idx, GW, GH, mesh, matLit, matFlat, gridMat, marker, target: new THREE.Vector3(0, 8, 0) });
+
+  const resize = () => { const r = box.getBoundingClientRect(); if (r.width < 10 || r.height < 10) return; renderer.setSize(r.width, r.height, false); cam.aspect = r.width / r.height; cam.updateProjectionMatrix(); V.needs = true; };
+  new ResizeObserver(resize).observe(box); resize();
+  const ptrs = new Map(); let pinch = 0;
+  const stopAuto = () => { if (V.auto) { V.auto = false; $('#autorot').checked = false; } };
+  box.addEventListener('pointerdown', e => { ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); box.setPointerCapture(e.pointerId); stopAuto(); });
+  box.addEventListener('pointermove', e => {
+    const pr = ptrs.get(e.pointerId); if (!pr) return;
+    if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()]; const d0 = Math.hypot(a.x - b.x, a.y - b.y);
+      pr.x = e.clientX; pr.y = e.clientY;
+      const [c, d] = [...ptrs.values()]; const d1 = Math.hypot(c.x - d.x, c.y - d.y);
+      if (d0 > 0 && pinch) V.r = clamp(V.r * d0 / d1, 110, 700);
+      pinch = 1; V.needs = true; return;
+    }
+    const dx = e.clientX - pr.x, dy = e.clientY - pr.y; pr.x = e.clientX; pr.y = e.clientY;
+    V.az -= dx * 0.008; V.el = clamp(V.el + dy * 0.006, 0.05, 1.52); V.needs = true;
+  });
+  const up = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = 0; };
+  box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
+  box.addEventListener('wheel', e => { e.preventDefault(); stopAuto(); V.r = clamp(V.r * Math.exp(e.deltaY * 0.0012), 110, 700); V.needs = true; }, { passive: false });
+  const resetView = () => { V.az = -0.55; V.el = 0.62; V.r = 215; V.needs = true; };
+  box.addEventListener('dblclick', resetView);
+  $('#view3dReset').addEventListener('click', resetView);
+  theme3D();
+}
+function theme3D() {
+  if (!V.ok) return;
+  const C = theme();
+  V.scene.background = new THREE.Color(C.fig || '#cfd5dd');
+  V.gridMat.color = new THREE.Color(C.muted || '#888888');
+  V.needs = true;
+}
+function update3D() {
+  if (!V.ok || !R) return;
+  const { pos, col, idx, GW, GH, geo } = V, hm = R.P.hmax, mode = color3d, lut = mode === 'err' ? LUT_D : LUT_V, camImg = R.imgs[2][0];
+  for (let gj = 0; gj < GH; gj++) for (let gi = 0; gi < GW; gi++) {
+    const v = gj * GW + gi, k = gj * 2 * W + gi * 2, o = v * 3, ok = R.valid[k];
+    const y = ok ? clamp(R.hRec[k], -0.6 * hm - 5, 1.8 * hm + 5) : 0;
+    pos[o] = (gi * 2 + 0.5) * PX - FOV_X / 2; pos[o + 1] = y; pos[o + 2] = (gj * 2 + 0.5) * PX - FOV_Y / 2;
+    if (mode === 'cam') { const g = camImg[k] / 255; col[o] = g; col[o + 1] = g; col[o + 2] = g; }
+    else {
+      const t = clamp(mode === 'err' ? (R.err[k] + errR) / (2 * errR) : y / hm, 0, 1), q = Math.round((t === t ? t : 0.5) * 255) * 3;
+      col[o] = lut[q] / 255; col[o + 1] = lut[q + 1] / 255; col[o + 2] = lut[q + 2] / 255;
+    }
+  }
+  let c = 0;
+  for (let gj = 0; gj < GH - 1; gj++) for (let gi = 0; gi < GW - 1; gi++) {
+    const a = gj * GW + gi, b = a + 1, cc = a + GW, d = cc + 1, k0 = gj * 2 * W + gi * 2;
+    const va = R.valid[k0], vb = R.valid[k0 + 2], vc = R.valid[k0 + 2 * W], vd = R.valid[k0 + 2 * W + 2];
+    if (va && vb && vc) { idx[c++] = a; idx[c++] = cc; idx[c++] = b; }
+    if (vb && vc && vd) { idx[c++] = b; idx[c++] = cc; idx[c++] = d; }
+  }
+  idx.fill(0, c);
+  geo.index.needsUpdate = true; geo.setDrawRange(0, c);
+  geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true;
+  geo.computeVertexNormals(); geo.computeBoundingSphere();
+  V.mesh.material = mode === 'cam' ? V.matFlat : V.matLit;
+  V.target.set(0, hm * 0.3, 0);
+  mark3D();
+}
+function mark3D() {
+  if (!V.ok || !R) return;
+  const k = sel.j * W + sel.i, y = R.valid[k] ? clamp(R.hRec[k], -0.6 * R.P.hmax - 5, 1.8 * R.P.hmax + 5) : R.h[k];
+  V.marker.position.set((sel.i + 0.5) * PX - FOV_X / 2, y + 0.6, (sel.j + 0.5) * PX - FOV_Y / 2);
+  V.needs = true;
+}
+function render3D() {
+  if (!V.ok || !V.visible) return;
+  if (V.auto) { V.az += 0.004; V.needs = true; }
+  if (!V.needs) return;
+  V.needs = false;
+  const { cam, target, az, el, r } = V;
+  cam.position.set(target.x + r * Math.cos(el) * Math.sin(az), target.y + r * Math.sin(el), target.z + r * Math.cos(el) * Math.cos(az));
+  cam.lookAt(target);
+  V.renderer.render(V.scene, cam);
+}
+$('#c3dSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  color3d = b.dataset.v; $$('#c3dSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  update3D();
+});
+$('#autorot').addEventListener('change', e => { V.auto = e.target.checked; V.needs = true; });
+
+// Hero: Schriftzug als Relief
+const hero = { cv: $('#hero'), mode: 'cam', t: 0, running: false, visible: true, last: 0, built: false };
+const HERO_LUT = (() => { const l = new Uint8Array(768); for (let i = 0; i < 256; i++) { const e = Math.pow(i / 255, 0.9); l[i * 3] = 6 + 194 * e; l[i * 3 + 1] = 9 + 203 * e; l[i * 3 + 2] = 22 + 233 * e; } return l; })();
+function boxBlur(src, w, h, r) {
+  const tmp = new Float32Array(w * h), out = new Float32Array(w * h), n = 2 * r + 1;
+  for (let y = 0; y < h; y++) {
+    const row = y * w; let acc = 0;
+    for (let x = -r; x <= r; x++) acc += src[row + clamp(x, 0, w - 1)];
+    for (let x = 0; x < w; x++) { tmp[row + x] = acc / n; acc += src[row + Math.min(w - 1, x + r + 1)] - src[row + Math.max(0, x - r)]; }
+  }
+  for (let x = 0; x < w; x++) {
+    let acc = 0;
+    for (let y = -r; y <= r; y++) acc += tmp[clamp(y, 0, h - 1) * w + x];
+    for (let y = 0; y < h; y++) { out[y * w + x] = acc / n; acc += tmp[Math.min(h - 1, y + r + 1) * w + x] - tmp[Math.max(0, y - r) * w + x]; }
+  }
+  return out;
+}
+function buildHero() {
+  const cw = hero.cv.parentElement.clientWidth || 800;
+  const two = cw < 640, IW = Math.max(260, Math.min(1100, Math.round(cw))), IH = Math.round(IW * (two ? 0.56 : 0.24));
+  const oc = document.createElement('canvas'); oc.width = IW; oc.height = IH;
+  const c = oc.getContext('2d');
+  c.fillStyle = '#000'; c.fillRect(0, 0, IW, IH); c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  const fam = '"Schibsted Grotesk","Helvetica Neue",Arial,sans-serif', lines = two ? ['Streifen-', 'projektion'] : ['Streifenprojektion'];
+  let fs = two ? IH * 0.36 : IH * 0.62;
+  c.font = `800 ${fs}px ${fam}`;
+  const mw = Math.max(...lines.map(l => c.measureText(l).width));
+  fs = Math.min(fs, fs * IW * 0.9 / mw); c.font = `800 ${fs}px ${fam}`;
+  lines.forEach((l, n) => c.fillText(l, IW / 2, two ? IH * (0.3 + 0.42 * n) : IH * 0.53));
+  const data = c.getImageData(0, 0, IW, IH).data;
+  let m = new Float32Array(IW * IH);
+  for (let k = 0; k < m.length; k++) m[k] = data[k * 4] / 255;
+  const r = Math.max(2, Math.round(IW / 230));
+  m = boxBlur(boxBlur(boxBlur(m, IW, IH, r), IW, IH, r), IW, IH, r);
+  const p = IW / (two ? 22 : 44), D = p * 0.42, G = D * 2.2, shade = new Float32Array(IW * IH);
+  for (let y = 0; y < IH; y++) for (let x = 0; x < IW; x++) {
+    const k = y * IW + x;
+    const gx = (m[y * IW + Math.min(IW - 1, x + 1)] - m[y * IW + Math.max(0, x - 1)]) * 0.5 * G;
+    const gy = (m[Math.min(IH - 1, y + 1) * IW + x] - m[Math.max(0, y - 1) * IW + x]) * 0.5 * G;
+    const s = (gx + 1) / Math.sqrt(1 + gx * gx + gy * gy);
+    shade[k] = clamp(s / 1.25, 0, 1);
+  }
+  hero.cv.width = IW; hero.cv.height = IH;
+  hero.ctx = hero.cv.getContext('2d'); hero.img = hero.ctx.createImageData(IW, IH);
+  Object.assign(hero, { IW, IH, m, shade, p, D, built: true });
+}
+function drawHero() {
+  if (!hero.built) return;
+  const { IW, IH, m, shade, p, D, t, img } = hero, d = img.data, kk = TAU / p;
+  for (let y = 0, k = 0; y < IH; y++) for (let x = 0; x < IW; x++, k++) {
+    const o = k * 4; let q;
+    if (hero.mode === 'cam') q = Math.round((0.04 + 0.96 * shade[k] * (0.5 + 0.5 * Math.cos(kk * (x + m[k] * D) - t))) * 255) * 3;
+    else if (hero.mode === 'phase') { let f = (x + m[k] * D) / p - t / TAU; f -= Math.floor(f); q = Math.round(f * 255) * 3; }
+    else { q = Math.round(clamp(m[k], 0, 1) * 255) * 3; d[o] = LUT_V[q]; d[o + 1] = LUT_V[q + 1]; d[o + 2] = LUT_V[q + 2]; d[o + 3] = 255; continue; }
+    d[o] = HERO_LUT[q]; d[o + 1] = HERO_LUT[q + 1]; d[o + 2] = HERO_LUT[q + 2]; d[o + 3] = 255;
+  }
+  hero.ctx.putImageData(img, 0, 0);
+}
+function heroLoop(ts) {
+  if (!hero.running) return;
+  const dt = hero.last ? Math.min(100, ts - hero.last) : 16; hero.last = ts;
+  if (hero.mode !== 'height') { hero.t += dt * 0.0011; drawHero(); }
+  requestAnimationFrame(heroLoop);
+}
+function heroStart() { if (hero.running || reduce || !hero.visible || document.hidden || !hero.built) return; hero.running = true; hero.last = 0; requestAnimationFrame(heroLoop); }
+function heroStop() { hero.running = false; }
+const HERO_CAPS = {
+  cam: 'Ein Schriftzug als flaches Relief, aufgenommen mit Streifenlicht. Wo die Oberfläche ansteigt, wandern die Streifen zur Seite.',
+  phase: 'Die daraus berechnete gewickelte Phase: Jeder Sägezahn ist ein Streifen, seine Verbiegung trägt die Höhe.',
+  height: 'Nach Entfalten und Umrechnen: die Höhe des Reliefs, Pixel für Pixel.'
+};
+$('#heroSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  hero.mode = b.dataset.v; $$('#heroSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  $('#heroCap').textContent = HERO_CAPS[hero.mode]; drawHero();
+});
+
+// Sichtbarkeit, Größe, Farbschema
+if ('IntersectionObserver' in window) {
+  new IntersectionObserver(es => es.forEach(en => {
+    if (en.target === hero.cv) { hero.visible = en.isIntersecting; hero.visible ? heroStart() : heroStop(); }
+    else if (en.target.id === 'cv-cam') camVisible = en.isIntersecting;
+    else if (en.target.id === 'view3d') { V.visible = en.isIntersecting; V.needs = true; }
+  }), { rootMargin: '100px' }).observe(hero.cv);
+}
+const io2 = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(en => {
+  if (en.target.id === 'cv-cam') camVisible = en.isIntersecting;
+  else if (en.target.id === 'view3d') { V.visible = en.isIntersecting; V.needs = true; }
+}), { rootMargin: '100px' }) : null;
+if (io2) { io2.observe($('#cv-cam')); io2.observe($('#view3d')); }
+document.addEventListener('visibilitychange', () => { document.hidden ? heroStop() : heroStart(); });
+let rzT = 0, heroW = 0;
+new ResizeObserver(() => {
+  clearTimeout(rzT);
+  rzT = setTimeout(() => {
+    const w = hero.cv.parentElement.clientWidth;
+    if (hero.built && Math.abs(w - heroW) > 30) { heroW = w; buildHero(); drawHero(); }
+    selDirty = true;
+  }, 120);
+}).observe(document.body);
+const redrawThemed = () => { drawSide(); drawSig(); drawProf(); theme3D(); };
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redrawThemed);
+new MutationObserver(redrawThemed).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+
+// Hauptschleife
+function frame(ts) {
+  if (dirty) { dirty = false; R = simulate(P); if (step >= P.N) step = 0; renderAll(); selDirty = false; }
+  else if (selDirty) { selDirty = false; renderSel(); }
+  if (playing && camVisible && R && ts - lastStep > 650) { lastStep = ts; step = (step + 1) % R.P.N; renderCam(); drawSig(); }
+  render3D();
+  requestAnimationFrame(frame);
+}
+
+syncControls(); syncPlay();
+init3D();
+$('#autorot').checked = V.auto;
+requestAnimationFrame(frame);
+const fontsReady = document.fonts && document.fonts.load
+  ? Promise.race([Promise.all([document.fonts.load('800 80px "Schibsted Grotesk"'), document.fonts.ready]), new Promise(r => setTimeout(r, 1500))])
+  : Promise.resolve();
+fontsReady.catch(() => {}).then(() => { buildHero(); heroW = hero.cv.parentElement.clientWidth; drawHero(); heroStart(); selDirty = true; });
+})();
+</script>
+</body>
+</html>

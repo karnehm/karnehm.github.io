@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drehkonventionen im Vergleich: Roll-Nick-Gier, Kardan, Euler</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #E3E7E4; --panel: #F2F4F2; --inset: #FAFBFA; --line: #BCC4BF; --ink: #1C2226; --ink2: #55616A;
+  --scene: #D3D9D5; --grid: #B4BCB7; --base: #6E7A80;
+  --a: #A86200; --b: #7A3E9D; --g: #0C7480; --focus: #1466C8; --warn: #8A5A00; --ok: #1D7A3B;
+  --ui: "Barlow", "DIN Alternate", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #1E2225; --panel: #292E32; --inset: #22262A; --line: #444B51; --ink: #E8ECEA; --ink2: #A3ADB3;
+    --scene: #30363A; --grid: #474F55; --base: #9AA5AB;
+    --a: #F0B35A; --b: #C99BE8; --g: #6CCFD6; --focus: #6FB1FF; --warn: #E7B45A; --ok: #6CCB86;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1E2225; --panel: #292E32; --inset: #22262A; --line: #444B51; --ink: #E8ECEA; --ink2: #A3ADB3;
+  --scene: #30363A; --grid: #474F55; --base: #9AA5AB;
+  --a: #F0B35A; --b: #C99BE8; --g: #6CCFD6; --focus: #6FB1FF; --warn: #E7B45A; --ok: #6CCB86;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--ui); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.bar { padding: 10px 16px 11px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.bar h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: .01em; }
+.bar p { margin: 2px 0 0; color: var(--ink2); max-width: 78ch; }
+
+main { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+.live, .setup { padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.live { border-right: 1px solid var(--line); display: grid; gap: 10px; align-content: start; }
+.setup { display: grid; gap: 10px; align-content: start; }
+
+.angles { display: grid; gap: 4px; }
+.angle { display: grid; grid-template-columns: 20px minmax(0, 1fr) 74px; align-items: center; gap: 10px; }
+.angle b { font: 600 18px/1 var(--ui); }
+.angle input[type="range"] { width: 100%; margin: 0; }
+.num { display: inline-flex; align-items: center; gap: 3px; font: 13px var(--mono); }
+.num input, .point input { width: 100%; font: 13px var(--mono); color: var(--ink); background: var(--inset); border: 1px solid var(--line); border-radius: 4px; padding: 4px 6px; text-align: right; }
+.ca { color: var(--a); } .cb { color: var(--b); } .cg { color: var(--g); }
+.angle.a input[type="range"] { accent-color: var(--a); }
+.angle.b input[type="range"] { accent-color: var(--b); }
+.angle.g input[type="range"] { accent-color: var(--g); }
+
+.flow { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+.flow input[type="range"] { width: 100%; margin: 0; accent-color: var(--ink); }
+.flow .ticks { grid-column: 2; display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink2); }
+.flow output { grid-column: 1 / -1; font-size: 14px; color: var(--ink2); }
+.btn { font: 500 14px/1.2 var(--ui); color: var(--ink); background: var(--inset); border: 1px solid var(--line); border-radius: 4px; padding: 6px 11px; cursor: pointer; }
+.btn:hover { border-color: var(--ink2); }
+.btn.play { background: var(--ink); color: var(--panel); border-color: var(--ink); font-weight: 600; min-width: 148px; }
+
+.group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.group > span { color: var(--ink2); font-size: 14px; margin-right: 2px; }
+.point label { display: inline-flex; align-items: center; gap: 4px; font: 13px var(--mono); }
+.point input { width: 58px; }
+.legend { margin: 0; font-size: 13.5px; color: var(--ink2); max-width: 70ch; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 3px 0 1px; vertical-align: -1px; }
+
+.panels { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.panel { padding: 12px 16px 18px; border-right: 1px solid var(--line); min-width: 0; }
+.panel:last-child { border-right: 0; }
+.panel header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 8px; min-height: 31px; }
+.panel h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.panel select { font: 500 14px/1.2 var(--ui); color: var(--ink); background: var(--inset); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; max-width: 100%; }
+.panel .kind { color: var(--ink2); font-size: 14px; }
+.view { position: relative; aspect-ratio: 4 / 3; background: var(--scene); border-radius: 4px; overflow: hidden; }
+.view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.view .nogl { position: absolute; inset: 0; margin: auto; height: max-content; padding: 0 16px; text-align: center; color: var(--ink2); }
+
+.formula { margin: 12px 0 4px; font-size: 19px; font-weight: 500; }
+.formula .f { padding: 1px 5px; border-radius: 4px; white-space: nowrap; transition: opacity .15s; }
+.formula .f.todo, .seq li.todo { opacity: .38; }
+.formula .f.now.ca, .seq li.now.ca { background: color-mix(in srgb, var(--a) 20%, transparent); }
+.formula .f.now.cb, .seq li.now.cb { background: color-mix(in srgb, var(--b) 20%, transparent); }
+.formula .f.now.cg, .seq li.now.cg { background: color-mix(in srgb, var(--g) 20%, transparent); }
+.seq { margin: 0 0 10px; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 2px 6px; counter-reset: s; font-size: 14.5px; }
+.seq li { counter-increment: s; padding: 1px 6px 1px 4px; border-radius: 4px; font-weight: 500; }
+.seq li::before { content: counter(s) ". "; color: var(--ink2); font-weight: 400; }
+
+.nums { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; font: 13px var(--mono); font-variant-numeric: tabular-nums; }
+.nums .lhs { font: 500 16px var(--ui); margin-right: -8px; }
+.mat { display: grid; grid-template-columns: repeat(3, auto); gap: 2px 14px; padding: 3px 9px; border: 1.5px solid var(--ink); border-top-color: transparent; border-bottom-color: transparent; border-radius: 5px; text-align: right; }
+.pv { white-space: nowrap; }
+.pv span { font: 500 16px var(--ui); }
+.hint { margin: 10px 0 0; font-size: 14px; color: var(--ink2); max-width: 46ch; }
+.notes { margin: 8px 0 0; padding: 0; list-style: none; font-size: 14px; font-weight: 500; }
+.notes li { margin-top: 3px; }
+.notes .same { color: var(--ok); }
+.notes .lock { color: var(--warn); }
+
+@media (max-width: 1000px) {
+  main { display: block; }
+  .live { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; border-right: 0; padding: 8px 14px; gap: 6px; }
+  .flow { padding-top: 6px; }
+  .flow .ticks { display: none; }
+  .btn.play { min-width: 0; }
+  .panels { grid-template-columns: minmax(0, 1fr); }
+  .panel { border-right: 0; border-bottom: 1px solid var(--line); }
+  .view { aspect-ratio: 5 / 4; }
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Drehkonventionen im Vergleich</h1>
+  <p>Dieselben drei Winkel ergeben je nach Konvention eine andere Orientierung. Stelle die Winkel ein und verfolge mit dem Ablauf, um welche Achse jede einzelne Drehung erfolgt.</p>
+</header>
+
+<main>
+  <section class="live" aria-label="Winkel und Ablauf">
+    <div class="angles" id="angles"></div>
+    <div class="flow">
+      <button class="btn play" id="play">Ablauf abspielen</button>
+      <input type="range" id="flow" min="0" max="3" step="0.01" value="3" aria-label="Ablauf der drei Drehungen">
+      <div class="ticks" aria-hidden="true"><span>Ausgangslage</span><span>1. Drehung</span><span>2. Drehung</span><span>3. Drehung</span></div>
+      <output id="flowText" for="flow"></output>
+    </div>
+  </section>
+
+  <section class="setup" aria-label="Beispiele und Punkt">
+    <div class="group" id="presets"><span>Beispiele</span></div>
+    <div class="group point"><span>Punkt p im Körpersystem</span>
+      <label>x <input type="number" id="px" min="-5" max="5" step="0.5" value="4"></label>
+      <label>y <input type="number" id="py" min="-5" max="5" step="0.5" value="0"></label>
+      <label>z <input type="number" id="pz" min="-5" max="5" step="0.5" value="0"></label>
+    </div>
+    <p class="legend">Grau: festes Basissystem x, y, z. <i style="background:#D0392B"></i><i style="background:#2F9E57"></i><i style="background:#2D6FD2"></i> Körperachsen X, Y, Z. Farbige Stäbe: die Drehachsen, jeweils in der Farbe ihres Winkels. Ziehen dreht alle drei Ansichten gemeinsam.</p>
+  </section>
+
+  <section class="panels" id="panels" aria-label="Vergleich der Konventionen"></section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const D2R = Math.PI / 180;
+
+  /* ---------- Rechnen mit 3x3-Matrizen ---------- */
+  const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  const E = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
+  const mul = (A, B) => A.map((r) => [0, 1, 2].map((j) => r[0] * B[0][j] + r[1] * B[1][j] + r[2] * B[2][j]));
+  const mv = (A, v) => A.map((r) => r[0] * v[0] + r[1] * v[1] + r[2] * v[2]);
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const col = (A, j) => [A[0][j], A[1][j], A[2][j]];
+  function rot(ax, deg) {
+    const c = Math.cos(deg * D2R), s = Math.sin(deg * D2R);
+    if (ax === 'x') return [[1, 0, 0], [0, c, -s], [0, s, c]];
+    if (ax === 'y') return [[c, 0, s], [0, 1, 0], [-s, 0, c]];
+    return [[c, -s, 0], [s, c, 0], [0, 0, 1]];
+  }
+  // Drehung um eine beliebige Einheitsachse n (Rodrigues)
+  function rotAbout(n, deg) {
+    const c = Math.cos(deg * D2R), s = Math.sin(deg * D2R), t = 1 - c, [x, y, z] = n;
+    return [[t * x * x + c, t * x * y - s * z, t * x * z + s * y], [t * x * y + s * z, t * y * y + c, t * y * z - s * x], [t * x * z - s * y, t * y * z + s * x, t * z * z + c]];
+  }
+  const ease = (u) => u * u * (3 - 2 * u);
+
+  /* ---------- Konventionen: Schritte in der Reihenfolge ihrer Ausführung ---------- */
+  const ANG = { a: { sym: 'α', cls: 'ca', hex: 0xE08A00 }, b: { sym: 'β', cls: 'cb', hex: 0x9B59C6 }, g: { sym: 'γ', cls: 'cg', hex: 0x12A3A3 } };
+  const PRIME = ['', '′', '″'];
+  const PANELS = [
+    { id: 'rpy', title: 'Roll-Nick-Gier-Winkel',
+      hint: 'Jede Drehung erfolgt um eine Achse des festen Basissystems. Eine neue Drehung wird von links an die Matrix multipliziert.',
+      options: [{ label: 'feste Achsen x, y, z', fixed: true, steps: [['x', 'a'], ['y', 'b'], ['z', 'g']] }] },
+    { id: 'kardan', title: 'Kardan-Winkel',
+      hint: 'Jede Drehung erfolgt um eine Achse des bereits gedrehten Körpers, und zwar um drei verschiedene Achsen. Eine neue Drehung wird von rechts multipliziert.',
+      options: [
+        { label: 'x-y′-z″', fixed: false, steps: [['x', 'a'], ['y', 'b'], ['z', 'g']] },
+        { label: 'z-y′-x″ mit γ, β, α', fixed: false, steps: [['z', 'g'], ['y', 'b'], ['x', 'a']] },
+      ] },
+    { id: 'euler', title: 'Euler-Winkel',
+      hint: 'Mitgedrehte Achsen wie bei Kardan, aber die erste und die dritte Drehung erfolgen um dieselbe Körperachse.',
+      options: [
+        { label: 'y-Konvention: z-y′-z″', fixed: false, steps: [['z', 'a'], ['y', 'b'], ['z', 'g']] },
+        { label: 'x-Konvention: z-x′-z″', fixed: false, steps: [['z', 'a'], ['x', 'b'], ['z', 'g']] },
+      ] },
+  ];
+  const axisName = (conv, k) => conv.steps[k][0] + (conv.fixed ? '' : PRIME[k]);
+
+  // Zustand nach t von 3 Drehungen: Matrix R, Drehachsen im Basissystem, Lage vor jedem Schritt
+  function evalConv(conv, ang, t) {
+    const out = { axes: [], starts: [], thetas: [], R: I3 };
+    let R = I3;
+    conv.steps.forEach(([ax, key], k) => {
+      const th = ang[key] * ease(Math.min(1, Math.max(0, t - k)));
+      out.axes.push(conv.fixed ? E[ax] : mv(R, E[ax]));
+      out.starts.push(R); out.thetas.push(th);
+      R = conv.fixed ? mul(rot(ax, th), R) : mul(R, rot(ax, th));
+    });
+    out.R = R;
+    return out;
+  }
+  // Fallen die erste und dritte Drehachse (in der mitgedrehten Lesart) zusammen?
+  function singular(conv, ang) {
+    const c = conv.fixed ? { fixed: false, steps: conv.steps.slice().reverse() } : conv;
+    const e = evalConv(c, ang, 3);
+    return Math.abs(dot(e.axes[0], e.axes[2])) > 1 - 1e-9;
+  }
+
+  const S = { ang: { a: 30, b: 45, g: 90 }, p: [4, 0, 0], t: 3, playing: false, sel: { rpy: 0, kardan: 0, euler: 0 } };
+  const conv = (pid) => PANELS.find((p) => p.id === pid).options[S.sel[pid]];
+  let dirty = true;
+
+  /* ---------- 3D-Ansicht ---------- */
+  let camera = null;
+  const views = [];
+  function label(text, opt) {
+    const c = document.createElement('canvas'), g = c.getContext('2d'), fs = 64;
+    const font = `600 ${fs}px Barlow, "Segoe UI", system-ui, sans-serif`;
+    g.font = font;
+    const w = Math.ceil(g.measureText(text).width), padX = opt.pill ? 22 : 6;
+    c.width = w + 2 * padX; c.height = fs + 22;
+    if (opt.pill) {
+      g.fillStyle = opt.pill;
+      const r = 20, W = c.width, H = c.height;
+      g.beginPath(); g.moveTo(r, 0); g.arcTo(W, 0, W, H, r); g.arcTo(W, H, 0, H, r); g.arcTo(0, H, 0, 0, r); g.arcTo(0, 0, W, 0, r); g.fill();
+    }
+    g.font = font; g.textBaseline = 'middle'; g.fillStyle = opt.color;
+    g.fillText(text, padX, c.height / 2 + 3);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false }));
+    const h = opt.size || 0.62;
+    sp.scale.set(h * c.width / c.height, h, 1);
+    sp.renderOrder = 5;
+    return sp;
+  }
+  const hexCss = (h) => '#' + h.toString(16).padStart(6, '0');
+  const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
+  const UP = () => new THREE.Vector3(0, 1, 0);
+
+  function makeView(host) {
+    const fail = () => {
+      const p = document.createElement('p');
+      p.className = 'nogl';
+      p.textContent = 'Die 3D-Ansicht lässt sich in diesem Browser nicht starten. Matrix und Punkt werden trotzdem berechnet.';
+      host.appendChild(p);
+      return null;
+    };
+    if (!window.THREE) return fail();
+    let renderer;
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return fail(); }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    host.appendChild(renderer.domElement);
+    if (!camera) {
+      camera = new THREE.PerspectiveCamera(33, 4 / 3, 0.5, 200);
+      camera.up.set(0, 0, 1);
+      camera.position.set(10.2, -8.6, 6.6);
+      camera.lookAt(0, 0, 0.5);
+    }
+    if (THREE.OrbitControls) {
+      const ctl = new THREE.OrbitControls(camera, renderer.domElement);
+      ctl.target.set(0, 0, 0.5); ctl.enablePan = false; ctl.enableZoom = false;
+      ctl.addEventListener('change', () => { dirty = true; });
+      ctl.update();
+    }
+    const scene = new THREE.Scene();
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x9aa3a0, 0.95);
+    hemi.position.set(0, 0, 1);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.35);
+    sun.position.set(4, -6, 10);
+    scene.add(hemi, sun);
+
+    const cyl = (r, len, m) => new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 20), m);
+    const cone = (r, len, m) => new THREE.Mesh(new THREE.ConeGeometry(r, len, 20), m);
+    const along = (obj, dir) => { obj.quaternion.setFromUnitVectors(UP(), V(dir).normalize()); return obj; };
+
+    // Festes Basissystem (farblich vom Farbschema abhängig)
+    let themed = null;
+    function setTheme() {
+      if (themed) { scene.remove(themed); themed.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } }); }
+      themed = new THREE.Group();
+      const base = css('--base'), ink = css('--ink');
+      const grid = new THREE.GridHelper(8, 8, css('--grid'), css('--grid'));
+      grid.rotation.x = Math.PI / 2;
+      themed.add(grid);
+      const m = new THREE.MeshBasicMaterial({ color: base });
+      for (const ax of ['x', 'y', 'z']) {
+        const d = E[ax];
+        const shaft = along(cyl(0.025, 4.6, m), d); shaft.position.copy(V(d).multiplyScalar(2.3));
+        const tip = along(cone(0.1, 0.34, m), d); tip.position.copy(V(d).multiplyScalar(4.7));
+        const l = label(ax, { color: base, size: 0.56 }); l.position.copy(V(d).multiplyScalar(5.6));
+        themed.add(shaft, tip, l);
+      }
+      scene.add(themed);
+      pointMat.color.set(ink); lineMat.color.set(ink);
+      if (pLabel) body.remove(pLabel);
+      pLabel = label('p', { color: ink, size: 0.56 });
+      body.add(pLabel);
+      dirty = true;
+    }
+
+    // Körper mit körperfesten Achsen X, Y, Z
+    const body = new THREE.Group();
+    body.matrixAutoUpdate = false;
+    scene.add(body);
+    const faces = [0x3F78BF, 0x5F9FD9, 0x6FBBEF, 0x62ABE2, 0x9DEBF9, 0x7ACBE6].map((c) => new THREE.MeshLambertMaterial({ color: c }));
+    body.add(new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.9, 1.1), faces));
+    [['x', 0xD0392B, 'X'], ['y', 0x2F9E57, 'Y'], ['z', 0x2D6FD2, 'Z']].forEach(([ax, hex, name]) => {
+      const d = E[ax], m = new THREE.MeshBasicMaterial({ color: hex });
+      const shaft = along(cyl(0.06, 2.9, m), d); shaft.position.copy(V(d).multiplyScalar(1.45));
+      const tip = along(cone(0.15, 0.42, m), d); tip.position.copy(V(d).multiplyScalar(3.1));
+      const l = label(name, { color: hexCss(hex), size: 0.6 }); l.position.copy(V(d).multiplyScalar(3.62));
+      body.add(shaft, tip, l);
+    });
+    const pointMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55 });
+    const point = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 14), pointMat);
+    body.add(point);
+    let pLabel = null;
+    const dropGeo = new THREE.BufferGeometry();
+    dropGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
+    const drop = new THREE.Line(dropGeo, lineMat);
+    drop.frustumCulled = false;
+    scene.add(drop);
+
+    // Drehachsen und Drehpfeil
+    const axisObjs = [];
+    let arc = null;
+    function setAxes(c) {
+      axisObjs.forEach((o) => { scene.remove(o.grp); o.grp.traverse((x) => { if (x.geometry) x.geometry.dispose(); if (x.material) { if (x.material.map) x.material.map.dispose(); x.material.dispose(); } }); });
+      axisObjs.length = 0;
+      c.steps.forEach(([, key], k) => {
+        const hex = ANG[key].hex, m = new THREE.MeshBasicMaterial({ color: hex, transparent: true });
+        const grp = new THREE.Group();
+        const bar = cyl(0.045, 5.8, m), tip = cone(0.13, 0.4, m);
+        bar.position.set(0, 1.3, 0); // kurzer Stummel in die Gegenrichtung, langer Teil in positive Richtung
+        tip.position.set(0, 4.35, 0);
+        const turn = new THREE.Group();
+        turn.add(bar, tip);
+        const l = label(axisName(c, k), { color: '#ffffff', pill: hexCss(hex), size: 0.58 });
+        grp.add(turn, l);
+        scene.add(grp);
+        axisObjs.push({ grp, turn, l, m, bar });
+      });
+    }
+    function setArc(axis, u, deg, hex) {
+      if (arc) { scene.remove(arc); arc.traverse((x) => { if (x.geometry) x.geometry.dispose(); if (x.material) x.material.dispose(); }); arc = null; }
+      if (Math.abs(deg) < 1) return;
+      const sgn = Math.sign(deg), rad = Math.abs(deg) * D2R, r = 2.1;
+      const m = new THREE.MeshBasicMaterial({ color: hex });
+      arc = new THREE.Group();
+      const tor = new THREE.Mesh(new THREE.TorusGeometry(r, 0.035, 8, Math.max(8, Math.round(rad * 14)), rad), m);
+      const z = [axis[0] * sgn, axis[1] * sgn, axis[2] * sgn], y = cross(z, u);
+      tor.matrixAutoUpdate = false;
+      tor.matrix.makeBasis(V(u), V(y), V(z));
+      const end = mv(rotAbout(axis, deg), u), tan = cross(z, end);
+      const head = along(cone(0.12, 0.36, m), tan);
+      head.position.copy(V(end).multiplyScalar(r));
+      arc.add(tor, head);
+      scene.add(arc);
+    }
+
+    function update(c, ev, p, t) {
+      const R = ev.R;
+      body.matrix.set(R[0][0], R[0][1], R[0][2], 0, R[1][0], R[1][1], R[1][2], 0, R[2][0], R[2][1], R[2][2], 0, 0, 0, 0, 1);
+      body.matrixWorldNeedsUpdate = true;
+      point.position.set(p[0], p[1], p[2]);
+      const pn = Math.hypot(p[0], p[1], p[2]) || 1;
+      if (pLabel) pLabel.position.set(p[0] + 0.45 * p[0] / pn, p[1] + 0.45 * p[1] / pn, p[2] + 0.45 * p[2] / pn + (pn < 0.5 ? 0.5 : 0));
+      const w = mv(R, p), a = dropGeo.attributes.position.array;
+      a.set([0, 0, 0, w[0], w[1], 0, w[0], w[1], w[2]]);
+      dropGeo.attributes.position.needsUpdate = true;
+      const active = t <= 0 ? -1 : Math.min(2, Math.ceil(t) - 1);
+      axisObjs.forEach((o, k) => {
+        o.grp.visible = k <= active;
+        if (!o.grp.visible) return;
+        along(o.turn, ev.axes[k]);
+        o.l.position.copy(V(ev.axes[k]).multiplyScalar(4.95));
+        const on = k === active;
+        o.m.opacity = on ? 1 : 0.5;
+        o.bar.scale.set(on ? 1.7 : 1, 1, on ? 1.7 : 1);
+        o.l.material.opacity = on ? 1 : 0.6;
+      });
+      if (active >= 0) {
+        const axis = ev.axes[active], Rs = ev.starts[active];
+        // Bezugsrichtung des Drehpfeils: die Körperachse, die am stärksten quer zur Drehachse steht
+        let u = null, best = -1;
+        for (let j = 0; j < 3; j++) {
+          const b = col(Rs, j), d = dot(b, axis), q = [b[0] - d * axis[0], b[1] - d * axis[1], b[2] - d * axis[2]], n = Math.hypot(q[0], q[1], q[2]);
+          if (n > best + 1e-6) { best = n; u = q.map((v) => v / n); }
+        }
+        setArc(axis, u, ev.thetas[active], ANG[c.steps[active][1]].hex);
+      } else setArc(null, null, 0, 0);
+    }
+    function resize() {
+      const w = host.clientWidth, h = host.clientHeight;
+      if (!w || !h) return;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h; camera.updateProjectionMatrix();
+      dirty = true;
+    }
+    new ResizeObserver(resize).observe(host);
+    setTheme();
+    resize();
+    return { setAxes, setTheme, update, render: () => renderer.render(scene, camera) };
+  }
+
+  /* ---------- Bedienelemente ---------- */
+  const fmt = (v) => (Math.abs(v) < 0.0005 ? 0 : v).toFixed(3).replace('.', ',').replace('-', '−');
+  const inputs = {};
+  for (const key of ['a', 'b', 'g']) {
+    const row = document.createElement('div');
+    row.className = 'angle ' + key;
+    row.innerHTML = `<b class="${ANG[key].cls}">${ANG[key].sym}</b>`
+      + `<input type="range" min="-180" max="180" step="1" aria-label="Winkel ${ANG[key].sym} in Grad">`
+      + `<span class="num"><input type="number" min="-180" max="180" step="1" aria-label="Winkel ${ANG[key].sym} in Grad, Zahl">°</span>`;
+    $('angles').appendChild(row);
+    const [range, num] = row.querySelectorAll('input');
+    inputs[key] = { range, num };
+    const set = (v) => { S.ang[key] = Math.max(-180, Math.min(180, Number(v) || 0)); syncInputs(); dirty = true; };
+    range.addEventListener('input', () => set(range.value));
+    num.addEventListener('change', () => set(num.value));
+  }
+  function syncInputs() {
+    for (const key of ['a', 'b', 'g']) { inputs[key].range.value = S.ang[key]; inputs[key].num.value = S.ang[key]; }
+  }
+  [[30, 45, 90], [90, 90, 90], [40, 0, 0], [0, 0, 0]].forEach((v) => {
+    const b = document.createElement('button');
+    b.className = 'btn';
+    b.textContent = `(${v.join('°, ')}°)`;
+    b.addEventListener('click', () => { [S.ang.a, S.ang.b, S.ang.g] = v; syncInputs(); dirty = true; });
+    $('presets').appendChild(b);
+  });
+  ['px', 'py', 'pz'].forEach((id, i) => $(id).addEventListener('input', () => {
+    S.p[i] = Math.max(-5, Math.min(5, Number($(id).value) || 0));
+    dirty = true;
+  }));
+
+  const flow = $('flow');
+  function setT(t) { S.t = Math.max(0, Math.min(3, t)); flow.value = S.t; dirty = true; }
+  flow.addEventListener('input', () => { stop(); setT(Number(flow.value)); });
+  function stop() { S.playing = false; $('play').textContent = 'Ablauf abspielen'; }
+  $('play').addEventListener('click', () => {
+    if (S.playing) { stop(); return; }
+    if (S.t >= 3) setT(0);
+    S.playing = true; $('play').textContent = 'Ablauf anhalten';
+  });
+
+  /* ---------- Die drei Tafeln ---------- */
+  const panels = PANELS.map((def) => {
+    const el = document.createElement('article');
+    el.className = 'panel';
+    el.innerHTML = `<header><h2>${def.title}</h2></header><div class="view"></div>`
+      + `<p class="formula"></p><ol class="seq"></ol>`
+      + `<div class="nums"><span class="lhs">R =</span><div class="mat"></div><div class="pv"><span>p<sub>BKS</sub> =</span> <output></output></div></div>`
+      + `<p class="hint">${def.hint}</p><ul class="notes" aria-live="polite"></ul>`;
+    $('panels').appendChild(el);
+    const head = el.querySelector('header');
+    if (def.options.length > 1) {
+      const sel = document.createElement('select');
+      sel.setAttribute('aria-label', 'Drehfolge für ' + def.title);
+      def.options.forEach((o, i) => sel.add(new Option(o.label, i)));
+      sel.addEventListener('change', () => { S.sel[def.id] = Number(sel.value); build(); dirty = true; });
+      head.appendChild(sel);
+    } else {
+      const k = document.createElement('span');
+      k.className = 'kind'; k.textContent = def.options[0].label;
+      head.appendChild(k);
+    }
+    const mat = el.querySelector('.mat');
+    for (let i = 0; i < 9; i++) mat.appendChild(document.createElement('span'));
+    const P = { def, el, cells: [...mat.children], view: makeView(el.querySelector('.view')), factors: [], seq: [] };
+    function build() {
+      const c = conv(def.id);
+      // Faktoren in der Reihenfolge, in der sie in der Formel stehen
+      const order = c.fixed ? [2, 1, 0] : [0, 1, 2];
+      const f = el.querySelector('.formula');
+      f.innerHTML = 'R = ' + order.map((k) => {
+        const [ax, key] = c.steps[k];
+        return `<span class="f ${ANG[key].cls}" data-k="${k}">R<sub>${ax}</sub>(${ANG[key].sym})</span>`;
+      }).join(' · ');
+      P.factors = [...f.querySelectorAll('.f')];
+      const s = el.querySelector('.seq');
+      s.innerHTML = c.steps.map(([, key], k) => `<li class="${ANG[key].cls}" data-k="${k}">${ANG[key].sym} um ${axisName(c, k)}</li>`).join('');
+      P.seq = [...s.children];
+      if (P.view) P.view.setAxes(c);
+    }
+    P.build = build;
+    build();
+    return P;
+  });
+
+  const NAMES = { rpy: 'Roll-Nick-Gier', kardan: 'Kardan', euler: 'Euler' };
+  function refresh() {
+    const finals = {};
+    panels.forEach((P) => { finals[P.def.id] = evalConv(conv(P.def.id), S.ang, 3).R; });
+    const same = (A, B) => A.every((r, i) => r.every((v, j) => Math.abs(v - B[i][j]) < 1e-6));
+    const active = S.t <= 0 ? -1 : Math.min(2, Math.ceil(S.t) - 1);
+    panels.forEach((P) => {
+      const c = conv(P.def.id), ev = evalConv(c, S.ang, S.t);
+      ev.R.forEach((r, i) => r.forEach((v, j) => { P.cells[i * 3 + j].textContent = fmt(v); }));
+      P.el.querySelector('.pv output').textContent = '(' + mv(ev.R, S.p).map(fmt).join('; ') + ')';
+      for (const list of [P.factors, P.seq]) for (const n of list) {
+        const k = Number(n.dataset.k);
+        n.classList.toggle('now', k === active && S.t < 3);
+        n.classList.toggle('todo', k > active);
+      }
+      const notes = [];
+      const eq = panels.filter((Q) => Q !== P && same(finals[P.def.id], finals[Q.def.id])).map((Q) => NAMES[Q.def.id]);
+      if (eq.length) notes.push(`<li class="same">Gleiche Orientierung wie ${eq.join(' und ')}.</li>`);
+      if (singular(c, S.ang)) notes.push('<li class="lock">Singularität (Gimbal Lock): α und γ bewirken hier eine Drehung um dieselbe Achse.</li>');
+      const ul = P.el.querySelector('.notes'), html = notes.join('');
+      if (ul.innerHTML !== html) ul.innerHTML = html;
+      if (P.view) { P.view.update(c, ev, S.p, S.t); P.view.render(); }
+    });
+    const k = Math.round(S.t);
+    $('flowText').textContent = S.t <= 0 ? 'Ausgangslage: Körper- und Basissystem liegen aufeinander.'
+      : Math.abs(S.t - k) < 0.005 ? `Stand nach ${k} von 3 Drehungen.` : `Während der ${Math.ceil(S.t)}. Drehung.`;
+  }
+
+  syncInputs();
+  const onTheme = () => { panels.forEach((P) => P.view && P.view.setTheme()); dirty = true; };
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onTheme);
+  new MutationObserver(onTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { panels.forEach((P) => { if (P.view) { P.view.setTheme(); P.view.setAxes(conv(P.def.id)); } }); dirty = true; });
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (S.playing) {
+      setT(S.t + dt * 0.55);
+      if (S.t >= 3) stop();
+    }
+    if (dirty) { dirty = false; refresh(); }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  window.__dreh = { S, evalConv, conv, setT, mark: () => { dirty = true; } }; // für Tests in der Browser-Konsole
+})();
+</script>
+</body>
+</html>

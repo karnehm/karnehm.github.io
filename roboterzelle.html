@@ -1,0 +1,1718 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roboterzelle – Industrieroboter mit Python steuern</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* BASICS */
+
+.CodeMirror {
+  /* Set height, width, borders, and global font properties here */
+  font-family: monospace;
+  height: 300px;
+  color: black;
+  direction: ltr;
+}
+
+/* PADDING */
+
+.CodeMirror-lines {
+  padding: 4px 0; /* Vertical padding around content */
+}
+.CodeMirror pre.CodeMirror-line,
+.CodeMirror pre.CodeMirror-line-like {
+  padding: 0 4px; /* Horizontal padding of content */
+}
+
+.CodeMirror-scrollbar-filler, .CodeMirror-gutter-filler {
+  background-color: white; /* The little square between H and V scrollbars */
+}
+
+/* GUTTER */
+
+.CodeMirror-gutters {
+  border-right: 1px solid #ddd;
+  background-color: #f7f7f7;
+  white-space: nowrap;
+}
+.CodeMirror-linenumbers {}
+.CodeMirror-linenumber {
+  padding: 0 3px 0 5px;
+  min-width: 20px;
+  text-align: right;
+  color: #999;
+  white-space: nowrap;
+}
+
+.CodeMirror-guttermarker { color: black; }
+.CodeMirror-guttermarker-subtle { color: #999; }
+
+/* CURSOR */
+
+.CodeMirror-cursor {
+  border-left: 1px solid black;
+  border-right: none;
+  width: 0;
+}
+/* Shown when moving in bi-directional text */
+.CodeMirror div.CodeMirror-secondarycursor {
+  border-left: 1px solid silver;
+}
+.cm-fat-cursor .CodeMirror-cursor {
+  width: auto;
+  border: 0 !important;
+  background: #7e7;
+}
+.cm-fat-cursor div.CodeMirror-cursors {
+  z-index: 1;
+}
+.cm-fat-cursor .CodeMirror-line::selection,
+.cm-fat-cursor .CodeMirror-line > span::selection, 
+.cm-fat-cursor .CodeMirror-line > span > span::selection { background: transparent; }
+.cm-fat-cursor .CodeMirror-line::-moz-selection,
+.cm-fat-cursor .CodeMirror-line > span::-moz-selection,
+.cm-fat-cursor .CodeMirror-line > span > span::-moz-selection { background: transparent; }
+.cm-fat-cursor { caret-color: transparent; }
+@-moz-keyframes blink {
+  0% {}
+  50% { background-color: transparent; }
+  100% {}
+}
+@-webkit-keyframes blink {
+  0% {}
+  50% { background-color: transparent; }
+  100% {}
+}
+@keyframes blink {
+  0% {}
+  50% { background-color: transparent; }
+  100% {}
+}
+
+/* Can style cursor different in overwrite (non-insert) mode */
+.CodeMirror-overwrite .CodeMirror-cursor {}
+
+.cm-tab { display: inline-block; text-decoration: inherit; }
+
+.CodeMirror-rulers {
+  position: absolute;
+  left: 0; right: 0; top: -50px; bottom: 0;
+  overflow: hidden;
+}
+.CodeMirror-ruler {
+  border-left: 1px solid #ccc;
+  top: 0; bottom: 0;
+  position: absolute;
+}
+
+/* DEFAULT THEME */
+
+.cm-s-default .cm-header {color: blue;}
+.cm-s-default .cm-quote {color: #090;}
+.cm-negative {color: #d44;}
+.cm-positive {color: #292;}
+.cm-header, .cm-strong {font-weight: bold;}
+.cm-em {font-style: italic;}
+.cm-link {text-decoration: underline;}
+.cm-strikethrough {text-decoration: line-through;}
+
+.cm-s-default .cm-keyword {color: #708;}
+.cm-s-default .cm-atom {color: #219;}
+.cm-s-default .cm-number {color: #164;}
+.cm-s-default .cm-def {color: #00f;}
+.cm-s-default .cm-variable,
+.cm-s-default .cm-punctuation,
+.cm-s-default .cm-property,
+.cm-s-default .cm-operator {}
+.cm-s-default .cm-variable-2 {color: #05a;}
+.cm-s-default .cm-variable-3, .cm-s-default .cm-type {color: #085;}
+.cm-s-default .cm-comment {color: #a50;}
+.cm-s-default .cm-string {color: #a11;}
+.cm-s-default .cm-string-2 {color: #f50;}
+.cm-s-default .cm-meta {color: #555;}
+.cm-s-default .cm-qualifier {color: #555;}
+.cm-s-default .cm-builtin {color: #30a;}
+.cm-s-default .cm-bracket {color: #997;}
+.cm-s-default .cm-tag {color: #170;}
+.cm-s-default .cm-attribute {color: #00c;}
+.cm-s-default .cm-hr {color: #999;}
+.cm-s-default .cm-link {color: #00c;}
+
+.cm-s-default .cm-error {color: #f00;}
+.cm-invalidchar {color: #f00;}
+
+.CodeMirror-composing { border-bottom: 2px solid; }
+
+/* Default styles for common addons */
+
+div.CodeMirror span.CodeMirror-matchingbracket {color: #0b0;}
+div.CodeMirror span.CodeMirror-nonmatchingbracket {color: #a22;}
+.CodeMirror-matchingtag { background: rgba(255, 150, 0, .3); }
+.CodeMirror-activeline-background {background: #e8f2ff;}
+
+/* STOP */
+
+/* The rest of this file contains styles related to the mechanics of
+   the editor. You probably shouldn't touch them. */
+
+.CodeMirror {
+  position: relative;
+  overflow: hidden;
+  background: white;
+}
+
+.CodeMirror-scroll {
+  overflow: scroll !important; /* Things will break if this is overridden */
+  /* 50px is the magic margin used to hide the element's real scrollbars */
+  /* See overflow: hidden in .CodeMirror */
+  margin-bottom: -50px; margin-right: -50px;
+  padding-bottom: 50px;
+  height: 100%;
+  outline: none; /* Prevent dragging from highlighting the element */
+  position: relative;
+  z-index: 0;
+}
+.CodeMirror-sizer {
+  position: relative;
+  border-right: 50px solid transparent;
+}
+
+/* The fake, visible scrollbars. Used to force redraw during scrolling
+   before actual scrolling happens, thus preventing shaking and
+   flickering artifacts. */
+.CodeMirror-vscrollbar, .CodeMirror-hscrollbar, .CodeMirror-scrollbar-filler, .CodeMirror-gutter-filler {
+  position: absolute;
+  z-index: 6;
+  display: none;
+  outline: none;
+}
+.CodeMirror-vscrollbar {
+  right: 0; top: 0;
+  overflow-x: hidden;
+  overflow-y: scroll;
+}
+.CodeMirror-hscrollbar {
+  bottom: 0; left: 0;
+  overflow-y: hidden;
+  overflow-x: scroll;
+}
+.CodeMirror-scrollbar-filler {
+  right: 0; bottom: 0;
+}
+.CodeMirror-gutter-filler {
+  left: 0; bottom: 0;
+}
+
+.CodeMirror-gutters {
+  position: absolute; left: 0; top: 0;
+  min-height: 100%;
+  z-index: 3;
+}
+.CodeMirror-gutter {
+  white-space: normal;
+  height: 100%;
+  display: inline-block;
+  vertical-align: top;
+  margin-bottom: -50px;
+}
+.CodeMirror-gutter-wrapper {
+  position: absolute;
+  z-index: 4;
+  background: none !important;
+  border: none !important;
+}
+.CodeMirror-gutter-background {
+  position: absolute;
+  top: 0; bottom: 0;
+  z-index: 4;
+}
+.CodeMirror-gutter-elt {
+  position: absolute;
+  cursor: default;
+  z-index: 4;
+}
+.CodeMirror-gutter-wrapper ::selection { background-color: transparent }
+.CodeMirror-gutter-wrapper ::-moz-selection { background-color: transparent }
+
+.CodeMirror-lines {
+  cursor: text;
+  min-height: 1px; /* prevents collapsing before first draw */
+}
+.CodeMirror pre.CodeMirror-line,
+.CodeMirror pre.CodeMirror-line-like {
+  /* Reset some styles that the rest of the page might have set */
+  -moz-border-radius: 0; -webkit-border-radius: 0; border-radius: 0;
+  border-width: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  margin: 0;
+  white-space: pre;
+  word-wrap: normal;
+  line-height: inherit;
+  color: inherit;
+  z-index: 2;
+  position: relative;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-variant-ligatures: contextual;
+  font-variant-ligatures: contextual;
+}
+.CodeMirror-wrap pre.CodeMirror-line,
+.CodeMirror-wrap pre.CodeMirror-line-like {
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  word-break: normal;
+}
+
+.CodeMirror-linebackground {
+  position: absolute;
+  left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 0;
+}
+
+.CodeMirror-linewidget {
+  position: relative;
+  z-index: 2;
+  padding: 0.1px; /* Force widget margins to stay inside of the container */
+}
+
+.CodeMirror-widget {}
+
+.CodeMirror-rtl pre { direction: rtl; }
+
+.CodeMirror-code {
+  outline: none;
+}
+
+/* Force content-box sizing for the elements where we expect it */
+.CodeMirror-scroll,
+.CodeMirror-sizer,
+.CodeMirror-gutter,
+.CodeMirror-gutters,
+.CodeMirror-linenumber {
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+}
+
+.CodeMirror-measure {
+  position: absolute;
+  width: 100%;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.CodeMirror-cursor {
+  position: absolute;
+  pointer-events: none;
+}
+.CodeMirror-measure pre { position: static; }
+
+div.CodeMirror-cursors {
+  visibility: hidden;
+  position: relative;
+  z-index: 3;
+}
+div.CodeMirror-dragcursors {
+  visibility: visible;
+}
+
+.CodeMirror-focused div.CodeMirror-cursors {
+  visibility: visible;
+}
+
+.CodeMirror-selected { background: #d9d9d9; }
+.CodeMirror-focused .CodeMirror-selected { background: #d7d4f0; }
+.CodeMirror-crosshair { cursor: crosshair; }
+.CodeMirror-line::selection, .CodeMirror-line > span::selection, .CodeMirror-line > span > span::selection { background: #d7d4f0; }
+.CodeMirror-line::-moz-selection, .CodeMirror-line > span::-moz-selection, .CodeMirror-line > span > span::-moz-selection { background: #d7d4f0; }
+
+.cm-searching {
+  background-color: #ffa;
+  background-color: rgba(255, 255, 0, .4);
+}
+
+/* Used to force a border model for a node */
+.cm-force-border { padding-right: .1px; }
+
+@media print {
+  /* Hide the cursor when printing */
+  .CodeMirror div.CodeMirror-cursors {
+    visibility: hidden;
+  }
+}
+
+/* See issue #2901 */
+.cm-tab-wrap-hack:after { content: ''; }
+
+/* Help users use markselection to safely style text background */
+span.CodeMirror-selectedtext { background: none; }
+
+</style>
+<style>
+:root {
+  --bg: #E3E7E4; --panel: #F2F4F2; --inset: #FAFBFA; --line: #BCC4BF; --ink: #1C2226; --ink2: #55616A;
+  --scene: #D3D9D5; --grid: #B4BCB7; --gridmajor: #8F9994;
+  --start: #1D7A3B; --stop: #BF2A20; --oncolor: #FFFFFF; --focus: #1466C8;
+  --exec: rgba(242, 183, 5, .32); --errbg: rgba(191, 42, 32, .14);
+  --ok: #1D7A3B; --err: #B3261E; --warn: #8A5A00;
+  --kw: #7A3E9D; --str: #1D7A3B; --num: #A8540A; --com: #77838A; --def: #1466C8; --bi: #0C7480;
+  --trace: #1466C8; --pad: #1466C8;
+  --ui: "Barlow", "DIN Alternate", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #1E2225; --panel: #292E32; --inset: #22262A; --line: #444B51; --ink: #E8ECEA; --ink2: #A3ADB3;
+    --scene: #30363A; --grid: #474F55; --gridmajor: #68727A;
+    --start: #43AD60; --stop: #E4675D; --oncolor: #0D1410; --focus: #6FB1FF;
+    --exec: rgba(242, 183, 5, .24); --errbg: rgba(228, 103, 93, .22);
+    --ok: #6CCB86; --err: #F0867D; --warn: #E7B45A;
+    --kw: #C99BE8; --str: #8FD19E; --num: #F0B060; --com: #808B92; --def: #7DB8FF; --bi: #6CCFD6;
+    --trace: #7DB8FF; --pad: #7DB8FF;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1E2225; --panel: #292E32; --inset: #22262A; --line: #444B51; --ink: #E8ECEA; --ink2: #A3ADB3;
+  --scene: #30363A; --grid: #474F55; --gridmajor: #68727A;
+  --start: #43AD60; --stop: #E4675D; --oncolor: #0D1410; --focus: #6FB1FF;
+  --exec: rgba(242, 183, 5, .24); --errbg: rgba(228, 103, 93, .22);
+  --ok: #6CCB86; --err: #F0867D; --warn: #E7B45A;
+  --kw: #C99BE8; --str: #8FD19E; --num: #F0B060; --com: #808B92; --def: #7DB8FF; --bi: #6CCFD6;
+  --trace: #7DB8FF; --pad: #7DB8FF;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body { height: 100%; margin: 0; display: flex; flex-direction: column; background: var(--bg); color: var(--ink); font: 15px/1.4 var(--ui); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.bar h1 { margin: 0 6px 0 0; font-size: 19px; font-weight: 600; letter-spacing: .01em; }
+.bar label { display: inline-flex; align-items: center; gap: 6px; color: var(--ink2); font-size: 14px; min-width: 0; max-width: 100%; }
+.bar select { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+.bar .spacer { flex: 1; }
+select, .btn { font: 500 14px/1.2 var(--ui); color: var(--ink); background: var(--inset); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; }
+.btn { cursor: pointer; }
+.btn:hover:not(:disabled), select:hover:not(:disabled) { border-color: var(--ink2); }
+.btn:disabled, select:disabled { opacity: .45; cursor: default; }
+.btn.start { background: var(--start); border-color: var(--start); color: var(--oncolor); font-weight: 600; padding: 7px 16px; }
+.btn.stop { background: var(--stop); border-color: var(--stop); color: var(--oncolor); font-weight: 600; padding: 7px 16px; }
+input[type="checkbox"], input[type="range"] { accent-color: var(--ink); }
+
+main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(380px, 42%) minmax(0, 1fr); }
+.code { display: grid; grid-template-rows: minmax(0, 1.7fr) auto minmax(0, 1fr); min-height: 0; min-width: 0; border-right: 1px solid var(--line); }
+.cell { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; min-width: 0; }
+
+#editor { min-height: 0; overflow: hidden; background: var(--inset); }
+#editor textarea.plain { width: 100%; height: 100%; border: 0; padding: 10px; resize: none; background: var(--inset); color: var(--ink); font: 13.5px/1.55 var(--mono); tab-size: 4; }
+.CodeMirror { height: 100%; font-family: var(--mono); font-size: 13.5px; line-height: 1.55; background: var(--inset); color: var(--ink); }
+.CodeMirror-gutters { background: var(--panel); border-right: 1px solid var(--line); }
+.CodeMirror-linenumber { color: var(--ink2); }
+.CodeMirror-cursor { border-left-color: var(--ink); }
+.CodeMirror-selected, .CodeMirror-focused .CodeMirror-selected { background: color-mix(in srgb, var(--focus) 24%, transparent); }
+.cm-s-default .cm-keyword { color: var(--kw); }
+.cm-s-default .cm-string { color: var(--str); }
+.cm-s-default .cm-number { color: var(--num); }
+.cm-s-default .cm-comment { color: var(--com); }
+.cm-s-default .cm-def { color: var(--def); }
+.cm-s-default .cm-builtin { color: var(--bi); }
+.cm-s-default .cm-variable, .cm-s-default .cm-variable-2, .cm-s-default .cm-property, .cm-s-default .cm-operator, .cm-s-default .cm-meta { color: var(--ink); }
+.cm-exec { background: var(--exec); }
+.cm-errline { background: var(--errbg); }
+
+.tabs { display: flex; gap: 2px; padding: 0 10px; background: var(--panel); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.tabs button { font: 500 14px/1 var(--ui); color: var(--ink2); background: none; border: 0; border-bottom: 2px solid transparent; padding: 9px 10px 7px; cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.panels { min-height: 0; position: relative; background: var(--inset); }
+.panels > div { position: absolute; inset: 0; overflow: auto; }
+.panels > div[hidden] { display: none; }
+#console { padding: 8px 12px; font: 13px/1.5 var(--mono); }
+.log { white-space: pre-wrap; overflow-wrap: anywhere; }
+.log.info { color: var(--ink2); }
+.log.ok { color: var(--ok); }
+.log.err { color: var(--err); }
+.log.warn { color: var(--warn); }
+#plotpanel { display: grid; grid-template-rows: auto minmax(0, 1fr); padding: 8px 12px; overflow: hidden; }
+#plotpanel[hidden] { display: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 12.5px/1.3 var(--mono); color: var(--ink2); }
+.legend i { display: inline-block; width: 14px; height: 3px; margin-right: 5px; vertical-align: middle; border-radius: 1px; }
+.plotbox { position: relative; min-height: 0; }
+.plotbox canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.plotbox p { position: absolute; inset: 0; margin: auto; height: max-content; max-width: 34ch; text-align: center; color: var(--ink2); }
+#api { padding: 10px 14px 18px; font-size: 14px; }
+#api h2 { font-size: 15px; font-weight: 600; margin: 14px 0 6px; }
+#api h2:first-child { margin-top: 2px; }
+#api p { margin: 4px 0; max-width: 70ch; }
+#api code { font: 12.5px var(--mono); }
+#api table { border-collapse: collapse; width: 100%; }
+#api td, #api th { text-align: left; vertical-align: top; padding: 4px 12px 4px 0; border-top: 1px solid var(--line); }
+#api th { font-weight: 500; color: var(--ink2); border-top: 0; }
+#api td:first-child { white-space: nowrap; }
+#api .num td, #api .num th { font: 12.5px var(--mono); text-align: right; padding-right: 16px; }
+#api .scroll { overflow-x: auto; }
+
+#view { position: relative; min-height: 0; background: var(--scene); overflow: hidden; }
+#view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#view .nogl { position: absolute; inset: 0; margin: auto; height: max-content; max-width: 40ch; text-align: center; color: var(--ink2); padding: 0 16px; }
+#hint { position: absolute; left: 12px; bottom: 9px; right: 12px; margin: 0; font-size: 13px; color: var(--ink2); pointer-events: none; }
+#hint.alert { color: var(--err); font-weight: 500; }
+
+.pendant { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 26px; padding: 10px 14px 12px; background: var(--panel); border-top: 1px solid var(--line); }
+.joints { display: grid; grid-template-rows: repeat(3, auto); grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px 22px; }
+.joint { display: grid; grid-template-columns: 24px minmax(0, 1fr) 58px; align-items: center; gap: 8px; font: 13px var(--mono); }
+.joint span:first-child { font: 600 14px var(--ui); }
+.joint output { text-align: right; font-variant-numeric: tabular-nums; }
+.joint input { width: 100%; margin: 0; }
+.tcp { display: grid; grid-template-rows: repeat(3, auto); grid-auto-flow: column; gap: 4px 18px; align-content: start; justify-content: start; font: 13px var(--mono); font-variant-numeric: tabular-nums; }
+.tcp div { display: flex; align-items: center; gap: 6px; }
+.tcp span { font: 600 14px var(--ui); min-width: 22px; }
+.tcp output { text-align: right; min-width: 68px; }
+.actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.actions label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink2); margin-left: 4px; }
+.actions .btn { padding: 5px 10px; }
+.actions .group { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+
+@media (max-width: 1250px) {
+  .pendant { grid-template-columns: minmax(0, 1fr); }
+  .tcp { grid-template-rows: none; grid-auto-flow: row; grid-template-columns: repeat(3, auto); }
+}
+@media (max-width: 900px) {
+  html, body { height: auto; }
+  body { display: block; }
+  main { display: flex; flex-direction: column; }
+  .cell { order: -1; display: block; }
+  #view { height: 68vw; min-height: 300px; max-height: 520px; }
+  .code { display: block; border-right: 0; border-top: 1px solid var(--line); }
+  #editor { height: 430px; }
+  .panels { height: 280px; }
+}
+@media (max-width: 560px) {
+  .joints { grid-template-rows: repeat(6, auto); }
+  .bar .spacer { display: none; }
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Roboterzelle</h1>
+  <label>Beispiel
+    <select id="examples"></select>
+  </label>
+  <button class="btn" id="restore" title="Verwirft deine Änderungen an diesem Beispiel">Beispielcode wiederherstellen</button>
+  <span class="spacer"></span>
+  <label>Tempo
+    <select id="override">
+      <option value="0.25">25 %</option>
+      <option value="0.5">50 %</option>
+      <option value="1" selected>100 %</option>
+      <option value="2">200 %</option>
+      <option value="4">400 %</option>
+    </select>
+  </label>
+  <button class="btn start" id="run" title="Strg + Enter">Programm starten</button>
+  <button class="btn stop" id="stop" disabled>Programm stoppen</button>
+</header>
+
+<main>
+  <section class="code" aria-label="Programm">
+    <div id="editor"></div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-console" aria-controls="console" aria-selected="true">Konsole</button>
+      <button role="tab" id="tab-plot" aria-controls="plotpanel" aria-selected="false">Gelenkwinkel</button>
+      <button role="tab" id="tab-api" aria-controls="api" aria-selected="false">Befehle</button>
+    </div>
+    <div class="panels">
+      <div id="console" role="tabpanel" aria-labelledby="tab-console" aria-live="polite"></div>
+      <div id="plotpanel" role="tabpanel" aria-labelledby="tab-plot" hidden>
+        <div class="legend" id="legend"></div>
+        <div class="plotbox"><canvas id="plot"></canvas><p id="plotempty">Noch keine Daten. Starte ein Programm, dann erscheinen hier die Gelenkwinkel über der Zeit.</p></div>
+      </div>
+      <div id="api" role="tabpanel" aria-labelledby="tab-api" hidden>
+        <h2>Bewegung</h2>
+        <table>
+          <tr><td><code>moveJ(q, speed=50)</code></td><td>Fährt Punkt-zu-Punkt zu den Gelenkwinkeln <code>q = [A1, …, A6]</code> in Grad. Alle Achsen starten und enden gleichzeitig. <code>speed</code> in Prozent der maximalen Achsgeschwindigkeit.</td></tr>
+          <tr><td><code>movePTP(pos, rpy=None, speed=50)</code></td><td>Wie <code>moveJ</code>, aber das Ziel ist eine Pose im Raum: <code>pos = [x, y, z]</code> in mm, <code>rpy = [rx, ry, rz]</code> in Grad. Die Gelenkwinkel berechnet die inverse Kinematik. Ohne <code>rpy</code> bleibt die Orientierung erhalten.</td></tr>
+          <tr><td><code>moveL(pos, rpy=None, speed=250)</code></td><td>Fährt linear: Der TCP bewegt sich auf einer Geraden zum Ziel. <code>speed</code> in mm/s.</td></tr>
+          <tr><td><code>home(speed=50)</code></td><td>Fährt in die Grundstellung <code>[0, 0, 0, 0, 90, 0]</code>.</td></tr>
+          <tr><td><code>wait(sekunden)</code></td><td>Wartet.</td></tr>
+        </table>
+        <h2>Greifer und Würfel</h2>
+        <table>
+          <tr><td><code>gripper_close()</code></td><td>Schließt den Greifer. Liefert <code>True</code>, wenn ein Würfel gegriffen wurde. Dafür muss der TCP höchstens 20 mm vom Würfelmittelpunkt entfernt sein.</td></tr>
+          <tr><td><code>gripper_open()</code></td><td>Öffnet den Greifer. Ein gehaltener Würfel fällt senkrecht auf den Tisch oder auf einen Würfel darunter.</td></tr>
+          <tr><td><code>cube_position(farbe)</code></td><td>Mittelpunkt des Würfels <code>"rot"</code>, <code>"gruen"</code> oder <code>"blau"</code> als <code>[x, y, z]</code> in mm. Kantenlänge 50 mm.</td></tr>
+          <tr><td><code>ABLAGE</code></td><td>Mitte des markierten Ablagefelds auf dem Tisch, <code>[250, -400, 0]</code>.</td></tr>
+        </table>
+        <h2>Zustand abfragen</h2>
+        <table>
+          <tr><td><code>get_joints()</code></td><td>Aktuelle Gelenkwinkel als Liste in Grad.</td></tr>
+          <tr><td><code>get_tcp_pose()</code></td><td>Aktuelle TCP-Pose <code>[x, y, z, rx, ry, rz]</code>.</td></tr>
+          <tr><td><code>RobotError</code></td><td>Ausnahme, wenn eine Bewegung nicht fahrbar ist: Ziel außerhalb des Arbeitsraums, Gelenkgrenze, Singularität oder Kollision mit Tisch und Roboterfuß. Lässt sich mit <code>try</code> / <code>except RobotError</code> abfangen.</td></tr>
+        </table>
+        <h2>Koordinaten</h2>
+        <p>Der Ursprung liegt in der Mitte des Roboterfußes auf Tischhöhe, z zeigt nach oben. Die Orientierung ist als Drehung um die festen Achsen angegeben: <code>R = Rz(rz) · Ry(ry) · Rx(rx)</code>. Bei <code>[180, 0, 0]</code> zeigt das Werkzeug senkrecht nach unten.</p>
+        <h2>Denavit-Hartenberg-Parameter</h2>
+        <p>Als Konstante <code>DH</code> verfügbar, je Gelenk <code>[Theta-Offset, d, a, Alpha]</code>. Der TCP liegt <code>TOOL</code> = 120 mm vor dem Flansch auf der z-Achse von Frame 6. <code>LIMITS</code> enthält die Gelenkgrenzen, <code>HOME</code> die Grundstellung.</p>
+        <div class="scroll"><table class="num" id="dhtable"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cell" aria-label="Roboterzelle">
+    <div id="view">
+      <p id="hint"></p>
+    </div>
+    <div class="pendant">
+      <div class="joints" id="joints"></div>
+      <div class="tcp" id="tcp"></div>
+      <div class="actions">
+        <button class="btn" id="teachJ" title="Fügt die aktuelle Stellung als Befehl in das Programm ein">Stellung als moveJ einfügen</button>
+        <button class="btn" id="teachL" title="Fügt die aktuelle TCP-Pose als Befehl in das Programm ein">Pose als moveL einfügen</button>
+        <span class="group"><button class="btn" id="resetCell">Zelle zurücksetzen</button>
+        <label><input type="checkbox" id="autoreset" checked> vor jedem Programmstart</label></span>
+        <button class="btn" id="shuffle">Würfel mischen</button>
+        <label><input type="checkbox" id="traceOn" checked> TCP-Spur zeichnen</label>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/python/python.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
+<script>
+/* ---------- Kinematik: Standard-DH, Vorwärtskinematik, numerische inverse Kinematik ---------- */
+const Kin = (() => {
+  const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+  // Standard-DH je Gelenk: [Theta-Offset (°), d (mm), a (mm), alpha (°)]
+  const DH = [
+    [0, 400, 25, -90],
+    [-90, 0, 455, 0],
+    [0, 0, 35, -90],
+    [0, 420, 0, 90],
+    [0, 0, 0, -90],
+    [0, 80, 0, 0],
+  ];
+  const TOOL = 120; // Flansch -> TCP entlang z6 (mm)
+  const LIMITS = [[-170, 170], [-90, 135], [-120, 70], [-185, 185], [-120, 120], [-350, 350]];
+  const HOME = [0, 0, 0, 0, 90, 0];
+
+  // Affine 3x4-Matrizen, zeilenweise: [r00 r01 r02 px  r10 r11 r12 py  r20 r21 r22 pz]
+  const IDENT = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0];
+  function mul(A, B) {
+    const C = new Array(12);
+    for (let r = 0; r < 3; r++) {
+      const a0 = A[r * 4], a1 = A[r * 4 + 1], a2 = A[r * 4 + 2];
+      C[r * 4] = a0 * B[0] + a1 * B[4] + a2 * B[8];
+      C[r * 4 + 1] = a0 * B[1] + a1 * B[5] + a2 * B[9];
+      C[r * 4 + 2] = a0 * B[2] + a1 * B[6] + a2 * B[10];
+      C[r * 4 + 3] = a0 * B[3] + a1 * B[7] + a2 * B[11] + A[r * 4 + 3];
+    }
+    return C;
+  }
+  function dhT(thetaDeg, d, a, alphaDeg) {
+    const ct = Math.cos(thetaDeg * D2R), st = Math.sin(thetaDeg * D2R);
+    const ca = Math.cos(alphaDeg * D2R), sa = Math.sin(alphaDeg * D2R);
+    return [ct, -st * ca, st * sa, a * ct, st, ct * ca, -ct * sa, a * st, 0, sa, ca, d];
+  }
+  // Liefert die Frames 0..6 und als 8. Eintrag den TCP
+  function fk(q) {
+    const F = [IDENT];
+    let T = IDENT;
+    for (let i = 0; i < 6; i++) {
+      T = mul(T, dhT(q[i] + DH[i][0], DH[i][1], DH[i][2], DH[i][3]));
+      F.push(T);
+    }
+    F.push(mul(T, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, TOOL]));
+    return F;
+  }
+  const pos = (T) => [T[3], T[7], T[11]];
+
+  // Quaternionen [w, x, y, z]
+  function quatFromMat(T) {
+    const m00 = T[0], m01 = T[1], m02 = T[2], m10 = T[4], m11 = T[5], m12 = T[6], m20 = T[8], m21 = T[9], m22 = T[10];
+    const tr = m00 + m11 + m22;
+    let w, x, y, z;
+    if (tr > 0) {
+      const s = Math.sqrt(tr + 1) * 2; w = s / 4; x = (m21 - m12) / s; y = (m02 - m20) / s; z = (m10 - m01) / s;
+    } else if (m00 > m11 && m00 > m22) {
+      const s = Math.sqrt(1 + m00 - m11 - m22) * 2; w = (m21 - m12) / s; x = s / 4; y = (m01 + m10) / s; z = (m02 + m20) / s;
+    } else if (m11 > m22) {
+      const s = Math.sqrt(1 + m11 - m00 - m22) * 2; w = (m02 - m20) / s; x = (m01 + m10) / s; y = s / 4; z = (m12 + m21) / s;
+    } else {
+      const s = Math.sqrt(1 + m22 - m00 - m11) * 2; w = (m10 - m01) / s; x = (m02 + m20) / s; y = (m12 + m21) / s; z = s / 4;
+    }
+    return [w, x, y, z];
+  }
+  function qmul(a, b) {
+    return [
+      a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
+      a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+      a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1],
+      a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0],
+    ];
+  }
+  const qconj = (q) => [q[0], -q[1], -q[2], -q[3]];
+  function slerp(a, b, t) {
+    let d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+    if (d < 0) { b = b.map((v) => -v); d = -d; }
+    if (d > 0.9995) {
+      const r = a.map((v, i) => v + t * (b[i] - v));
+      const n = Math.hypot(...r); return r.map((v) => v / n);
+    }
+    const th = Math.acos(d), s = Math.sin(th);
+    const wa = Math.sin((1 - t) * th) / s, wb = Math.sin(t * th) / s;
+    return a.map((v, i) => wa * v + wb * b[i]);
+  }
+  // Drehwinkel zwischen zwei Orientierungen (rad)
+  function quatAngle(a, b) {
+    const d = Math.abs(a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]);
+    return 2 * Math.acos(Math.min(1, d));
+  }
+  // Orientierung als [rx, ry, rz] in Grad, R = Rz(rz) * Ry(ry) * Rx(rx)
+  function rpyToQuat(rpy) {
+    const a = rpy[0] * D2R, b = rpy[1] * D2R, c = rpy[2] * D2R;
+    const ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b), cc = Math.cos(c), sc = Math.sin(c);
+    return quatFromMat([
+      cc * cb, cc * sb * sa - sc * ca, cc * sb * ca + sc * sa, 0,
+      sc * cb, sc * sb * sa + cc * ca, sc * sb * ca - cc * sa, 0,
+      -sb, cb * sa, cb * ca, 0,
+    ]);
+  }
+  function matToRpy(T) {
+    const cb = Math.hypot(T[0], T[4]);
+    let a, b, c;
+    if (cb > 1e-6) { b = Math.atan2(-T[8], cb); c = Math.atan2(T[4], T[0]); a = Math.atan2(T[9], T[10]); }
+    else { b = Math.atan2(-T[8], cb); c = 0; a = Math.atan2(-T[6], T[5]); }
+    const cl = (v) => { const d = v * R2D; return Math.abs(d) < 1e-9 ? 0 : Math.abs(d + 180) < 1e-3 ? 180 : d; };
+    return [cl(a), cl(b), cl(c)];
+  }
+  function tcpPose(q) {
+    const T = fk(q)[7];
+    return [T[3], T[7], T[11], ...matToRpy(T)];
+  }
+
+  // Lineares 6x6-Gleichungssystem (Gauß mit Pivotsuche)
+  function solve6(A, b) {
+    const n = 6, M = A.map((r, i) => [...r, b[i]]);
+    for (let c = 0; c < n; c++) {
+      let p = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+      [M[c], M[p]] = [M[p], M[c]];
+      const piv = M[c][c];
+      for (let r = c + 1; r < n; r++) {
+        const f = M[r][c] / piv;
+        if (f !== 0) for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k];
+      }
+    }
+    const x = new Array(n);
+    for (let r = n - 1; r >= 0; r--) {
+      let s = M[r][n];
+      for (let k = r + 1; k < n; k++) s -= M[r][k] * x[k];
+      x[r] = s / M[r][r];
+    }
+    return x;
+  }
+
+  // Inverse Kinematik: gedämpfte kleinste Quadrate (DLS) ab Startkonfiguration seed
+  function ikStep(seed, p, quat, maxIter) {
+    const q = seed.slice();
+    let ep = 0, eo = 0;
+    for (let it = 0; it < maxIter; it++) {
+      const F = fk(q), T = F[7];
+      const e = [(p[0] - T[3]) / 1000, (p[1] - T[7]) / 1000, (p[2] - T[11]) / 1000, 0, 0, 0];
+      let qe = qmul(quat, qconj(quatFromMat(T)));
+      if (qe[0] < 0) qe = qe.map((v) => -v);
+      const vn = Math.hypot(qe[1], qe[2], qe[3]);
+      if (vn > 1e-12) {
+        const ang = 2 * Math.atan2(vn, qe[0]);
+        e[3] = qe[1] / vn * ang; e[4] = qe[2] / vn * ang; e[5] = qe[3] / vn * ang;
+      }
+      ep = Math.hypot(e[0], e[1], e[2]); eo = Math.hypot(e[3], e[4], e[5]);
+      if (ep < 1e-8 && eo < 1e-8) return { q, ok: true, ep, eo };
+      if (ep > 0.08) for (let k = 0; k < 3; k++) e[k] *= 0.08 / ep;
+      if (eo > 0.4) for (let k = 3; k < 6; k++) e[k] *= 0.4 / eo;
+      // Geometrische Jacobi-Matrix (Spalten je Gelenk)
+      const J = [[], [], [], [], [], []];
+      for (let i = 0; i < 6; i++) {
+        const Ti = F[i], z = [Ti[2], Ti[6], Ti[10]];
+        const r = [(T[3] - Ti[3]) / 1000, (T[7] - Ti[7]) / 1000, (T[11] - Ti[11]) / 1000];
+        J[0][i] = z[1] * r[2] - z[2] * r[1];
+        J[1][i] = z[2] * r[0] - z[0] * r[2];
+        J[2][i] = z[0] * r[1] - z[1] * r[0];
+        J[3][i] = z[0]; J[4][i] = z[1]; J[5][i] = z[2];
+      }
+      const A = [];
+      for (let r = 0; r < 6; r++) {
+        A.push([]);
+        for (let c = 0; c < 6; c++) {
+          let s = 0;
+          for (let k = 0; k < 6; k++) s += J[r][k] * J[c][k];
+          A[r].push(s + (r === c ? 4e-4 : 0));
+        }
+      }
+      const y = solve6(A, e);
+      for (let i = 0; i < 6; i++) {
+        let s = 0;
+        for (let k = 0; k < 6; k++) s += J[k][i] * y[k];
+        q[i] += s * R2D;
+      }
+    }
+    return { q, ok: ep < 2e-4 && eo < 2e-3, ep, eo };
+  }
+
+  // Winkel auf die zu ref nächstliegende, innerhalb der Grenzen liegende Darstellung bringen
+  function normalize(q, ref) {
+    return q.map((v, i) => {
+      let x = v + 360 * Math.round((ref[i] - v) / 360);
+      if (x < LIMITS[i][0] && x + 360 <= LIMITS[i][1]) x += 360;
+      if (x > LIMITS[i][1] && x - 360 >= LIMITS[i][0]) x -= 360;
+      return x;
+    });
+  }
+  function limitViolation(q) {
+    for (let i = 0; i < 6; i++) if (q[i] < LIMITS[i][0] - 1e-6 || q[i] > LIMITS[i][1] + 1e-6) return i;
+    return -1;
+  }
+  // Einfache Kollisionsprüfung gegen Tischplatte (z = 0) und Roboterfuß
+  function collision(q, heldOffset) {
+    const F = fk(q);
+    const checks = [[F[2], 70], [F[3], 60], [F[4], 50], [F[6], 45], [F[7], -0.5]];
+    for (const [T, zmin] of checks) if (T[11] < zmin) return 'Kollision mit der Tischplatte';
+    for (const T of [F[6], F[7]]) if (Math.hypot(T[3], T[7]) < 150 && T[11] < 380) return 'Kollision mit dem Roboterfuß';
+    if (heldOffset) {
+      const T = F[7];
+      const z = T[8] * heldOffset[0] + T[9] * heldOffset[1] + T[10] * heldOffset[2] + T[11];
+      if (z - 25 < -1) return 'Der gegriffene Würfel würde in die Tischplatte gedrückt';
+    }
+    return null;
+  }
+
+  // Zielkonfiguration für eine kartesische Pose suchen (mehrere Startwerte, nächstliegende Lösung)
+  function ikPose(p, quat, current, heldOffset) {
+    const a1 = Math.atan2(p[1], p[0]) * R2D;
+    const seeds = [current, HOME, [a1, 20, 20, 0, 60, 0], [a1, 40, -20, 0, 70, 0], [a1, -10, 40, 0, 60, 0], [a1, 20, 20, 180, -60, 180]];
+    let rnd = 12345;
+    const rand = () => { rnd = (rnd * 1103515245 + 12345) % 2147483648; return rnd / 2147483648; };
+    for (let k = 0; k < 24; k++) seeds.push(LIMITS.map(([lo, hi]) => lo + rand() * (hi - lo)));
+    let best = null, bestCost = Infinity, reason = 'unreachable';
+    for (let k = 0; k < seeds.length; k++) {
+      const r = ikStep(seeds[k], p, quat, 150);
+      if (!r.ok) continue;
+      const q = normalize(r.q, current);
+      if (limitViolation(q) >= 0) { if (reason === 'unreachable') reason = 'limit'; continue; }
+      if (collision(q, heldOffset)) { reason = 'collision'; continue; }
+      const cost = Math.max(...q.map((v, i) => Math.abs(v - current[i])));
+      if (cost < bestCost) { bestCost = cost; best = q; }
+      if (k === 0 && cost < 120) break; // Lösung nahe der aktuellen Stellung genügt
+    }
+    return best ? { q: best } : { error: reason };
+  }
+
+  // Gelenkbahn (PTP): alle Achsen synchron, linear im Gelenkraum
+  function planJoint(q0, q1, heldOffset) {
+    const span = Math.max(...q0.map((v, i) => Math.abs(q1[i] - v)));
+    const n = Math.max(1, Math.ceil(span));
+    const samples = [q0.slice()];
+    for (let k = 1; k <= n; k++) {
+      const q = q0.map((v, i) => v + (q1[i] - v) * k / n);
+      const c = collision(q, heldOffset);
+      if (c) return { samples, span, error: c, n };
+      samples.push(q);
+    }
+    return { samples, span, n };
+  }
+
+  // Lineare Bahn: TCP fährt eine Gerade, Orientierung per Slerp; IK für jeden Bahnpunkt
+  function planLinear(q0, p1, quat1, heldOffset) {
+    const T0 = fk(q0)[7], p0 = pos(T0), quat0 = quatFromMat(T0);
+    const dist = Math.hypot(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]);
+    const angle = quatAngle(quat0, quat1) * R2D;
+    const n = Math.max(1, Math.ceil(Math.max(dist / 2, angle / 0.5)));
+    const samples = [q0.slice()];
+    let q = q0;
+    for (let k = 1; k <= n; k++) {
+      const s = k / n;
+      const p = [p0[0] + (p1[0] - p0[0]) * s, p0[1] + (p1[1] - p0[1]) * s, p0[2] + (p1[2] - p0[2]) * s];
+      const r = ikStep(q, p, slerp(quat0, quat1, s), 40);
+      const pct = Math.round(s * 100);
+      if (!r.ok) return { samples, dist, angle, n, error: `Bahnpunkt bei ${pct} % der Strecke nicht erreichbar (Arbeitsraumgrenze oder Singularität)` };
+      const jump = r.q.map((v, i) => Math.abs(v - q[i]));
+      const jmax = Math.max(...jump);
+      if (jmax > 12) return { samples, dist, angle, n, error: `Singularität bei ${pct} % der Strecke: Achse A${jump.indexOf(jmax) + 1} müsste sprunghaft drehen` };
+      const lim = limitViolation(r.q);
+      if (lim >= 0) return { samples, dist, angle, n, error: `Gelenkgrenze von A${lim + 1} bei ${pct} % der Strecke erreicht (${r.q[lim].toFixed(1)}°)` };
+      const c = collision(r.q, heldOffset);
+      if (c) return { samples, dist, angle, n, error: `${c} bei ${pct} % der Strecke` };
+      samples.push(r.q); q = r.q;
+    }
+    return { samples, dist, angle, n };
+  }
+
+  return { DH, TOOL, LIMITS, HOME, fk, pos, mul, quatFromMat, rpyToQuat, matToRpy, tcpPose, ikPose, planJoint, planLinear, limitViolation, collision, slerp };
+})();
+if (typeof module !== 'undefined') module.exports = Kin;
+
+</script>
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const CUBE = 50, HALF = 25, GAP_OPEN = 74, GAP_EMPTY = 18;
+  const ABLAGE = [250, -400, 0];
+  const VJ = 200; // Achsgeschwindigkeit in °/s bei speed = 100
+  const CUBE_COLORS = { rot: 0xCF3B2C, gruen: 0x2F9E57, blau: 0x2D6FD2 };
+  const JCOL = ['#D64533', '#E08A00', '#2E9E4F', '#1B93BF', '#6166DC', '#B6489F'];
+  const STOP = new Error('stop');
+  class CellError extends Error {}
+
+  const S = {
+    q: Kin.HOME.slice(), running: false, stop: false, override: 1, motion: null,
+    gap: GAP_OPEN, held: null, cubes: [], simTime: 0, plot: [], traceOn: true,
+    layout: [{ name: 'rot', x: 500, y: 150 }, { name: 'gruen', x: 500, y: 0 }, { name: 'blau', x: 500, y: -150 }],
+  };
+
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const fmt = (v) => { const r = Math.round(v * 10) / 10; return String(r === 0 ? 0 : r); };
+  const clean = (v) => { const r = Math.round(v * 1e6) / 1e6; return r === 0 ? 0 : r; };
+  const quintic = (t) => t * t * t * (10 - 15 * t + 6 * t * t);
+  const poseZ = (x, y, z, yaw) => { const c = Math.cos(yaw), s = Math.sin(yaw); return [c, -s, 0, x, s, c, 0, y, 0, 0, 1, z]; };
+  const inv = (T) => [
+    T[0], T[4], T[8], -(T[0] * T[3] + T[4] * T[7] + T[8] * T[11]),
+    T[1], T[5], T[9], -(T[1] * T[3] + T[5] * T[7] + T[9] * T[11]),
+    T[2], T[6], T[10], -(T[2] * T[3] + T[6] * T[7] + T[10] * T[11]),
+  ];
+  const heldOffset = () => (S.held ? [S.held.M[3], S.held.M[7], S.held.M[11]] : null);
+
+  /* ---------- 3D-Ansicht ---------- */
+  function initView() {
+    const host = $('view');
+    const fail = () => {
+      const p = document.createElement('p');
+      p.className = 'nogl';
+      p.textContent = 'Die 3D-Ansicht lässt sich in diesem Browser nicht starten (WebGL fehlt). Programme laufen trotzdem, die Werte unten zeigen die Bewegung.';
+      host.prepend(p);
+      return null;
+    };
+    if (!window.THREE) return fail();
+    let renderer;
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return fail(); }
+    host.prepend(renderer.domElement);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(36, 1, 20, 20000);
+    camera.up.set(0, 0, 1);
+    camera.position.set(1850, -1640, 1290);
+    const target = new THREE.Vector3(240, -60, 400);
+    let controls = null;
+    if (THREE.OrbitControls) {
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.target.copy(target);
+      controls.enableDamping = true; controls.dampingFactor = 0.12;
+      controls.minDistance = 500; controls.maxDistance = 6000;
+      controls.maxPolarAngle = Math.PI / 2 - 0.02;
+      controls.update();
+    } else camera.lookAt(target);
+
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x7d8480, 0.78);
+    hemi.position.set(0, 0, 1);
+    scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.62);
+    sun.position.set(600, -900, 1900);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    Object.assign(sun.shadow.camera, { left: -1300, right: 1300, top: 1300, bottom: -1300, near: 200, far: 4200 });
+    sun.shadow.bias = -0.0006;
+    scene.add(sun);
+
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(2600, 2600), new THREE.ShadowMaterial({ opacity: 0.2 }));
+    floor.position.z = -0.6; floor.receiveShadow = true;
+    scene.add(floor);
+
+    const mat = {
+      body: new THREE.MeshStandardMaterial({ color: 0xF2B705, roughness: 0.52, metalness: 0.05 }),
+      dark: new THREE.MeshStandardMaterial({ color: 0x2E3337, roughness: 0.62, metalness: 0.15 }),
+      steel: new THREE.MeshStandardMaterial({ color: 0xC3C9CC, roughness: 0.4, metalness: 0.25 }),
+    };
+    const add = (parent, geo, m, x, y, z) => {
+      const mesh = new THREE.Mesh(geo, m);
+      mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true;
+      parent.add(mesh);
+      return mesh;
+    };
+    const cyl = (parent, m, r, h, axis, x, y, z) => {
+      const g = new THREE.CylinderGeometry(r, r, h, 40);
+      if (axis === 'x') g.rotateZ(Math.PI / 2); else if (axis === 'z') g.rotateX(Math.PI / 2);
+      return add(parent, g, m, x, y, z);
+    };
+    const box = (parent, m, sx, sy, sz, x, y, z) => add(parent, new THREE.BoxGeometry(sx, sy, sz), m, x, y, z);
+
+    // Je DH-Frame eine Gruppe; die Körper sind in den Koordinaten ihres Frames beschrieben
+    const G = [];
+    for (let i = 0; i < 7; i++) { const g = new THREE.Group(); g.matrixAutoUpdate = false; scene.add(g); G.push(g); }
+    cyl(G[0], mat.dark, 160, 16, 'z', 0, 0, 8);
+    cyl(G[0], mat.dark, 125, 150, 'z', 0, 0, 91);
+    cyl(G[1], mat.body, 118, 154, 'y', -25, 157, 0);
+    box(G[1], mat.body, 170, 60, 184, -10, 100, 0);
+    cyl(G[1], mat.body, 95, 44, 'z', 0, 0, 70);
+    cyl(G[1], mat.body, 95, 44, 'z', 0, 0, -70);
+    cyl(G[1], mat.dark, 60, 196, 'z', 0, 0, 0);
+    cyl(G[1], mat.dark, 48, 70, 'z', 0, 0, -130);
+    box(G[2], mat.body, 455, 100, 76, -227.5, 0, 0);
+    cyl(G[2], mat.body, 62, 76, 'z', -455, 0, 0);
+    cyl(G[2], mat.body, 58, 76, 'z', 0, 0, 0);
+    box(G[3], mat.body, 120, 124, 150, 0, 0, 20);
+    cyl(G[3], mat.dark, 40, 136, 'y', -35, 0, 0);
+    cyl(G[3], mat.body, 52, 145, 'z', 0, 0, 132.5);
+    cyl(G[3], mat.dark, 42, 50, 'z', 0, 0, -75);
+    cyl(G[4], mat.dark, 54, 10, 'y', 0, -210, 0);
+    cyl(G[4], mat.body, 48, 135, 'y', 0, -137.5, 0);
+    box(G[4], mat.body, 84, 36, 112, 0, -60, 0);
+    for (const s of [1, -1]) {
+      box(G[4], mat.body, 70, 45, 16, 0, -22.5, 48 * s);
+      cyl(G[4], mat.body, 35, 16, 'z', 0, 0, 48 * s);
+    }
+    cyl(G[5], mat.dark, 33, 78, 'y', 0, 0, 0);
+    cyl(G[5], mat.dark, 30, 66, 'z', 0, 0, 33);
+    cyl(G[6], mat.steel, 36, 14, 'z', 0, 0, -7);
+    box(G[6], mat.dark, 46, 104, 44, 0, 0, 22);
+    const fingers = [box(G[6], mat.steel, 24, 9, 82, 0, 0, 85), box(G[6], mat.steel, 24, 9, 82, 0, 0, 85)];
+    // Koordinatenachsen am TCP
+    [[0xE0352B, 'x'], [0x2FA84F, 'y'], [0x2B6FE0, 'z']].forEach(([c, ax]) => {
+      const m = cyl(G[6], new THREE.MeshBasicMaterial({ color: c }), 2.4, 64, ax, ax === 'x' ? 32 : 0, ax === 'y' ? 32 : 0, Kin.TOOL + (ax === 'z' ? 32 : 0));
+      m.castShadow = false; m.receiveShadow = false;
+    });
+
+    const cubeMeshes = {};
+    for (const name of Object.keys(CUBE_COLORS)) {
+      const m = add(scene, new THREE.BoxGeometry(CUBE, CUBE, CUBE), new THREE.MeshStandardMaterial({ color: CUBE_COLORS[name], roughness: 0.6 }), 0, 0, 0);
+      m.matrixAutoUpdate = false;
+      cubeMeshes[name] = m;
+    }
+
+    // TCP-Spur
+    const MAXP = 30000;
+    const tracePos = new Float32Array(MAXP * 3);
+    const traceGeo = new THREE.BufferGeometry();
+    traceGeo.setAttribute('position', new THREE.BufferAttribute(tracePos, 3));
+    traceGeo.setDrawRange(0, 0);
+    const traceMat = new THREE.LineBasicMaterial({ color: 0x1466C8 });
+    const trace = new THREE.Line(traceGeo, traceMat);
+    trace.frustumCulled = false;
+    scene.add(trace);
+    let traceN = 0;
+
+    // Vom Farbschema abhängige Teile: Raster, Weltachsen, Ablagefeld, Beschriftung
+    let themed = null;
+    function label(text, color) {
+      const c = document.createElement('canvas'), ctx = c.getContext('2d'), fs = 56;
+      const font = `600 ${fs}px Barlow, "Segoe UI", system-ui, sans-serif`;
+      ctx.font = font;
+      c.width = Math.ceil(ctx.measureText(text).width) + 16; c.height = fs + 16;
+      ctx.font = font; ctx.fillStyle = color; ctx.textBaseline = 'middle';
+      ctx.fillText(text, 8, c.height / 2 + 2);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false }));
+      sp.scale.set(44 * c.width / c.height, 44, 1);
+      return sp;
+    }
+    const line = (pts, color) => new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map((p) => new THREE.Vector3(...p))), new THREE.LineBasicMaterial({ color }));
+    function applyTheme() {
+      if (themed) {
+        scene.remove(themed);
+        themed.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } });
+      }
+      themed = new THREE.Group();
+      const grid = new THREE.GridHelper(2400, 24, css('--gridmajor'), css('--grid'));
+      grid.rotation.x = Math.PI / 2;
+      themed.add(grid);
+      themed.add(line([[0, 0, 1], [1100, 0, 1]], 0xE0352B), line([[0, 0, 1], [0, 1100, 1]], 0x2FA84F));
+      const ink = css('--ink2'), pad = css('--pad');
+      const lx = label('X', ink); lx.position.set(1150, 0, 30);
+      const ly = label('Y', ink); ly.position.set(0, 1150, 30);
+      const h = 65, [ax, ay] = ABLAGE;
+      const fill = new THREE.Mesh(new THREE.PlaneGeometry(2 * h, 2 * h), new THREE.MeshBasicMaterial({ color: pad, transparent: true, opacity: 0.16, depthWrite: false }));
+      fill.position.set(ax, ay, 0.4);
+      const la = label('Ablage', ink); la.position.set(ax - 30, ay - h - 130, 10);
+      themed.add(lx, ly, fill, la, line([[ax - h, ay - h, 1], [ax + h, ay - h, 1], [ax + h, ay + h, 1], [ax - h, ay + h, 1], [ax - h, ay - h, 1]], pad));
+      scene.add(themed);
+      traceMat.color.set(css('--trace'));
+    }
+    applyTheme();
+
+    const setM = (obj, T) => { obj.matrix.set(T[0], T[1], T[2], T[3], T[4], T[5], T[6], T[7], T[8], T[9], T[10], T[11], 0, 0, 0, 1); obj.matrixWorldNeedsUpdate = true; };
+    function resize() {
+      const w = host.clientWidth, h = host.clientHeight;
+      if (!w || !h) return;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h; camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(host);
+    resize();
+
+    return {
+      applyTheme,
+      setRobot(F, gap) {
+        for (let i = 0; i < 7; i++) setM(G[i], F[i]);
+        fingers[0].position.y = gap / 2 + 4.5; fingers[1].position.y = -gap / 2 - 4.5;
+      },
+      setCubes(cubes) { for (const c of cubes) setM(cubeMeshes[c.name], c.T); },
+      tracePush(x, y, z) {
+        if (traceN >= MAXP) return;
+        if (traceN) { const k = (traceN - 1) * 3; if (Math.hypot(tracePos[k] - x, tracePos[k + 1] - y, tracePos[k + 2] - z) < 1.5) return; }
+        tracePos.set([x, y, z], traceN * 3); traceN++;
+        traceGeo.setDrawRange(0, traceN); traceGeo.attributes.position.needsUpdate = true;
+      },
+      traceClear() { traceN = 0; traceGeo.setDrawRange(0, 0); },
+      render() { if (controls) controls.update(); renderer.render(scene, camera); },
+    };
+  }
+
+  /* ---------- Editor ---------- */
+  const editor = (() => {
+    const host = $('editor');
+    if (window.CodeMirror) {
+      const marks = { exec: null, err: null };
+      const cm = CodeMirror(host, {
+        mode: 'python', lineNumbers: true, indentUnit: 4, tabSize: 4, indentWithTabs: false,
+        extraKeys: {
+          Tab: (c) => (c.somethingSelected() ? c.execCommand('indentMore') : c.replaceSelection('    ', 'end')),
+          'Shift-Tab': 'indentLess',
+          'Ctrl-Enter': () => runProgram(), 'Cmd-Enter': () => runProgram(),
+        },
+      });
+      cm.getInputField().setAttribute('aria-label', 'Python-Programm');
+      const mark = (kind, line) => {
+        if (marks[kind]) { cm.removeLineClass(marks[kind], 'background', kind === 'exec' ? 'cm-exec' : 'cm-errline'); marks[kind] = null; }
+        if (line > 0 && line <= cm.lineCount()) {
+          marks[kind] = cm.addLineClass(line - 1, 'background', kind === 'exec' ? 'cm-exec' : 'cm-errline');
+          cm.scrollIntoView({ line: line - 1, ch: 0 }, 30);
+        }
+      };
+      return {
+        get: () => cm.getValue(),
+        set: (v) => { cm.setValue(v); cm.clearHistory(); },
+        onChange: (fn) => cm.on('change', fn),
+        mark,
+        clearMarks: () => { mark('exec', 0); mark('err', 0); },
+        insertLine(text) {
+          const cur = cm.getCursor(), ln = cm.getLine(cur.line), indent = /^\s*/.exec(ln)[0];
+          if (ln.trim() === '') cm.replaceRange(indent + text, { line: cur.line, ch: 0 }, { line: cur.line, ch: ln.length });
+          else cm.replaceRange('\n' + indent + text, { line: cur.line, ch: ln.length });
+          const nl = ln.trim() === '' ? cur.line : cur.line + 1;
+          cm.setCursor({ line: nl, ch: cm.getLine(nl).length });
+          cm.focus();
+        },
+      };
+    }
+    const ta = document.createElement('textarea');
+    ta.className = 'plain'; ta.spellcheck = false; ta.setAttribute('aria-label', 'Python-Programm');
+    host.appendChild(ta);
+    return {
+      get: () => ta.value, set: (v) => { ta.value = v; }, onChange: (fn) => ta.addEventListener('input', fn),
+      mark() {}, clearMarks() {},
+      insertLine(text) { ta.value = ta.value.replace(/\n?$/, '\n') + text + '\n'; ta.dispatchEvent(new Event('input')); },
+    };
+  })();
+
+  /* ---------- Konsole und Reiter ---------- */
+  const con = $('console');
+  let outBuf = '';
+  function log(kind, text) {
+    const d = document.createElement('div');
+    d.className = 'log ' + kind; d.textContent = text;
+    con.appendChild(d);
+    while (con.childElementCount > 1500) con.firstElementChild.remove();
+    con.scrollTop = con.scrollHeight;
+  }
+  function out(text) {
+    outBuf += text;
+    let i;
+    while ((i = outBuf.indexOf('\n')) >= 0) { log('out', outBuf.slice(0, i)); outBuf = outBuf.slice(i + 1); }
+  }
+  function flushOut() { if (outBuf) { log('out', outBuf); outBuf = ''; } }
+
+  const TABS = ['console', 'plotpanel', 'api'];
+  function showTab(id) {
+    for (const t of TABS) {
+      $(t).hidden = t !== id;
+      document.querySelector(`[aria-controls="${t}"]`).setAttribute('aria-selected', String(t === id));
+    }
+    if (id === 'plotpanel') drawPlot();
+  }
+  document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.getAttribute('aria-controls'))));
+
+  const HINT = window.matchMedia('(pointer: coarse)').matches
+    ? 'Ein Finger dreht die Ansicht, zwei Finger zoomen. Raster 100 mm.'
+    : 'Ziehen dreht die Ansicht, das Mausrad zoomt. Raster 100 mm, X rot, Y grün, Z nach oben.';
+  let hintTimer = 0;
+  function hint(text) {
+    const el = $('hint');
+    clearTimeout(hintTimer);
+    el.textContent = text || HINT;
+    el.classList.toggle('alert', !!text);
+    if (text) hintTimer = setTimeout(hint, 4000);
+  }
+
+  /* ---------- Bedienfeld: Achsen und TCP ---------- */
+  const sliders = [], jointOut = [], tcpOut = [];
+  Kin.LIMITS.forEach(([lo, hi], i) => {
+    const row = document.createElement('div');
+    row.className = 'joint';
+    row.innerHTML = `<span>A${i + 1}</span><input type="range" min="${lo}" max="${hi}" step="0.5" aria-label="Achse A${i + 1} in Grad"><output></output>`;
+    $('joints').appendChild(row);
+    const sl = row.querySelector('input');
+    sliders.push(sl); jointOut.push(row.querySelector('output'));
+    sl.addEventListener('input', () => {
+      if (S.running) return;
+      const q = S.q.slice();
+      q[i] = +sl.value;
+      const c = Kin.collision(q, heldOffset());
+      if (c) { sl.value = S.q[i]; hint(c + ': Bewegung gesperrt.'); return; }
+      S.q = q; refresh();
+    });
+  });
+  ['X', 'Y', 'Z', 'RX', 'RY', 'RZ'].forEach((name) => {
+    const d = document.createElement('div'), s = document.createElement('span'), o = document.createElement('output');
+    s.textContent = name;
+    d.append(s, o);
+    $('tcp').appendChild(d);
+    tcpOut.push(o);
+  });
+  function hud(T) {
+    for (let i = 0; i < 6; i++) { sliders[i].value = S.q[i]; jointOut[i].textContent = (Math.abs(S.q[i]) < 0.05 ? 0 : S.q[i]).toFixed(1) + '°'; }
+    const r = Kin.matToRpy(T), p = [T[3], T[7], T[11]];
+    for (let k = 0; k < 3; k++) {
+      tcpOut[k].textContent = (Math.abs(p[k]) < 0.05 ? 0 : p[k]).toFixed(1) + ' mm';
+      tcpOut[3 + k].textContent = (Math.abs(r[k]) < 0.05 ? 0 : r[k]).toFixed(1) + '°';
+    }
+  }
+
+  let view = null;
+  function refresh() {
+    const F = Kin.fk(S.q);
+    if (S.held) S.cubes[S.held.i].T = Kin.mul(F[7], S.held.M);
+    if (view) {
+      view.setRobot(F, S.gap); view.setCubes(S.cubes);
+      if (S.traceOn) view.tracePush(F[7][3], F[7][7], F[7][11]);
+    }
+    hud(F[7]);
+  }
+  function setJoints(q) {
+    S.q = q;
+    if (S.running && S.plot.length < 40000) S.plot.push([S.simTime, ...q]);
+    refresh();
+  }
+
+  /* ---------- Zelle: Bewegungen, Greifer, Würfel ---------- */
+  function animate(T, step) {
+    return new Promise((resolve, reject) => {
+      if (S.stop) return reject(STOP);
+      S.motion = { t: 0, T: Math.max(T, 0.001), step, resolve, reject };
+    });
+  }
+  async function runPlan(plan, T) {
+    const n = plan.samples.length;
+    if (n > 1) {
+      let traced = 0;
+      await animate(Math.max(0.25, T * (n - 1) / plan.n), (tau) => {
+        const s = quintic(tau) * (n - 1), i = Math.min(n - 2, Math.floor(s)), f = s - i;
+        const a = plan.samples[i], b = plan.samples[i + 1];
+        // Spur auch bei niedriger Bildrate lückenlos: übersprungene Bahnpunkte nachtragen
+        if (view && S.traceOn) for (; traced < i; traced++) { const P = Kin.fk(plan.samples[traced + 1])[7]; view.tracePush(P[3], P[7], P[11]); }
+        setJoints(a.map((v, k) => v + (b[k] - v) * f));
+      });
+    }
+    if (plan.error) throw new CellError(plan.error);
+  }
+  function supportZ(i) {
+    const c = S.cubes[i].T;
+    let top = 0;
+    S.cubes.forEach((o, k) => {
+      if (k === i || (S.held && S.held.i === k)) return;
+      if (Math.abs(o.T[3] - c[3]) < CUBE && Math.abs(o.T[7] - c[7]) < CUBE && o.T[11] <= c[11] + 10) top = Math.max(top, o.T[11] + HALF);
+    });
+    return top + HALF;
+  }
+  // Frei schwebende Würfel absetzen (z. B. nach einem Stopp mitten im Ablegen)
+  function settle() {
+    S.cubes.map((c, i) => i).filter((i) => !(S.held && S.held.i === i)).sort((a, b) => S.cubes[a].T[11] - S.cubes[b].T[11]).forEach((i) => {
+      const c = S.cubes[i].T;
+      S.cubes[i].T = poseZ(c[3], c[7], supportZ(i), Math.atan2(c[4], c[0]));
+    });
+    refresh();
+  }
+  const IK_ERR = {
+    unreachable: 'Zielpose liegt außerhalb des Arbeitsraums',
+    limit: 'Zielpose ist nur mit Gelenkwinkeln außerhalb der Gelenkgrenzen erreichbar',
+    collision: 'Zielpose führt zu einer Kollision mit Tisch oder Roboterfuß',
+  };
+  const cell = {
+    async moveJ(target, speed) {
+      for (let i = 0; i < 6; i++) {
+        const [lo, hi] = Kin.LIMITS[i];
+        if (target[i] < lo - 1e-6 || target[i] > hi + 1e-6) throw new CellError(`A${i + 1} = ${fmt(target[i])}° liegt außerhalb der Gelenkgrenzen von ${lo}° bis ${hi}°`);
+      }
+      const plan = Kin.planJoint(S.q, target, heldOffset());
+      await runPlan(plan, 1.875 * plan.span / (VJ * speed / 100));
+    },
+    async movePTP(p, quat, speed) {
+      const r = Kin.ikPose(p, quat, S.q, heldOffset());
+      if (r.error) throw new CellError(IK_ERR[r.error]);
+      await cell.moveJ(r.q, speed);
+    },
+    async moveL(p, quat, speed) {
+      const plan = Kin.planLinear(S.q, p, quat, heldOffset());
+      await runPlan(plan, 1.875 * Math.max(plan.dist / speed, plan.angle / (speed * 0.4)));
+    },
+    wait: (sec) => animate(sec, () => {}),
+    async gripClose() {
+      if (S.held) return true;
+      const tcp = Kin.fk(S.q)[7];
+      let best = -1, bd = 20;
+      S.cubes.forEach((c, i) => {
+        const d = Math.hypot(c.T[3] - tcp[3], c.T[7] - tcp[7], c.T[11] - tcp[11]);
+        if (d <= bd) { bd = d; best = i; }
+      });
+      const g0 = S.gap, g1 = best >= 0 ? CUBE : GAP_EMPTY;
+      await animate(0.35, (tau) => { S.gap = g0 + (g1 - g0) * tau; refresh(); });
+      if (best < 0) return false;
+      S.held = { i: best, M: Kin.mul(inv(Kin.fk(S.q)[7]), S.cubes[best].T) };
+      return true;
+    },
+    async gripOpen() {
+      const g0 = S.gap;
+      await animate(0.3, (tau) => { S.gap = g0 + (GAP_OPEN - g0) * tau; refresh(); });
+      if (!S.held) return;
+      const i = S.held.i;
+      S.held = null;
+      const c = S.cubes[i].T, yaw = Math.atan2(c[4], c[0]), z0 = c[11], z1 = supportZ(i);
+      await animate(Math.min(0.35, 0.08 + Math.abs(z0 - z1) / 600), (tau) => { S.cubes[i].T = poseZ(c[3], c[7], z0 + (z1 - z0) * tau * tau, yaw); refresh(); });
+    },
+  };
+  function resetCell() {
+    S.q = Kin.HOME.slice(); S.gap = GAP_OPEN; S.held = null;
+    S.cubes = S.layout.map((c) => ({ name: c.name, T: poseZ(c.x, c.y, HALF, 0) }));
+    if (view) view.traceClear();
+    refresh();
+  }
+  function shuffle() {
+    const placed = [];
+    for (const c of S.layout) {
+      let x, y, tries = 0;
+      do {
+        const r = 380 + Math.random() * 240, a = (-20 + Math.random() * 120) * Math.PI / 180;
+        x = Math.round(r * Math.cos(a)); y = Math.round(r * Math.sin(a));
+      } while (!placed.every((o) => Math.hypot(o.x - x, o.y - y) > 110) && ++tries < 300);
+      placed.push({ name: c.name, x, y });
+    }
+    S.layout = placed;
+    resetCell();
+  }
+
+  /* ---------- Python (Skulpt): Modul „robot“ ---------- */
+  const API_NAMES = ['moveJ', 'movePTP', 'moveL', 'home', 'wait', 'gripper_close', 'gripper_open', 'get_joints', 'get_tcp_pose', 'cube_position', 'ABLAGE', 'HOME', 'DH', 'TOOL', 'LIMITS', 'RobotError'];
+  function buildModule() {
+    const mod = {}, py = Sk.ffi.remapToPy, js = Sk.ffi.remapToJs, none = Sk.builtin.none.none$;
+    mod.RobotError = Sk.misceval.buildClass(mod, function () {}, 'RobotError', [Sk.builtin.Exception]);
+    const susp = (promise) => {
+      const p = promise.then(
+        (v) => (v === undefined ? none : py(v)),
+        (e) => { throw e instanceof CellError ? Sk.misceval.callsimArray(mod.RobotError, [new Sk.builtin.str(e.message)]) : e; },
+      );
+      p.catch(() => {}); // ein Stopp darf nicht als unbehandelter Fehler enden
+      return Sk.misceval.promiseToSuspension(p);
+    };
+    const def = (name, names, defaults, fn) => {
+      fn.co_varnames = names; fn.co_argcount = names.length;
+      fn.$defaults = defaults.map((d) => (d === null ? none : py(d)));
+      fn.co_name = new Sk.builtin.str(name);
+      mod[name] = new Sk.builtin.func(fn);
+    };
+    const vec = (v, n, msg) => {
+      const a = js(v);
+      if (!Array.isArray(a) || a.length !== n || !a.every((x) => typeof x === 'number' && isFinite(x))) throw new Sk.builtin.TypeError(msg);
+      return a;
+    };
+    const num = (v, name, hi) => {
+      const x = js(v);
+      if (typeof x !== 'number' || !isFinite(x) || x <= 0 || x > hi) throw new Sk.builtin.ValueError(`${name} muss größer als 0 und höchstens ${hi} sein`);
+      return x;
+    };
+    const pos3 = (v, fn) => vec(v, 3, `${fn}: pos muss eine Liste [x, y, z] in mm sein`);
+    const quatOf = (v, fn) => (v === none || v === undefined ? Kin.quatFromMat(Kin.fk(S.q)[7]) : Kin.rpyToQuat(vec(v, 3, `${fn}: rpy muss eine Liste [rx, ry, rz] in Grad sein`)));
+
+    def('moveJ', ['q', 'speed'], [50], (q, speed) => susp(cell.moveJ(vec(q, 6, 'moveJ: q muss eine Liste mit 6 Gelenkwinkeln in Grad sein, z. B. [0, 0, 0, 0, 90, 0]'), num(speed, 'speed', 100))));
+    def('movePTP', ['pos', 'rpy', 'speed'], [null, 50], (pos, rpy, speed) => susp(cell.movePTP(pos3(pos, 'movePTP'), quatOf(rpy, 'movePTP'), num(speed, 'speed', 100))));
+    def('moveL', ['pos', 'rpy', 'speed'], [null, 250], (pos, rpy, speed) => susp(cell.moveL(pos3(pos, 'moveL'), quatOf(rpy, 'moveL'), num(speed, 'speed', 2000))));
+    def('home', ['speed'], [50], (speed) => susp(cell.moveJ(Kin.HOME.slice(), num(speed, 'speed', 100))));
+    def('wait', ['sekunden'], [], (sec) => {
+      const s = js(sec);
+      if (typeof s !== 'number' || !(s >= 0) || s > 600) throw new Sk.builtin.ValueError('wait: Zeit in Sekunden zwischen 0 und 600 angeben');
+      return susp(cell.wait(s));
+    });
+    def('gripper_close', [], [], () => susp(cell.gripClose()));
+    def('gripper_open', [], [], () => susp(cell.gripOpen()));
+    def('get_joints', [], [], () => py(S.q.map(clean)));
+    def('get_tcp_pose', [], [], () => py(Kin.tcpPose(S.q).map(clean)));
+    def('cube_position', ['farbe'], [], (farbe) => {
+      const name = String(js(farbe)).toLowerCase().replace('ü', 'ue');
+      const c = S.cubes.find((k) => k.name === name);
+      if (!c) throw new Sk.builtin.ValueError('cube_position: Es gibt die Würfel "rot", "gruen" und "blau"');
+      return py([c.T[3], c.T[7], c.T[11]].map(clean));
+    });
+    mod.ABLAGE = py(ABLAGE); mod.HOME = py(Kin.HOME); mod.DH = py(Kin.DH); mod.TOOL = py(Kin.TOOL); mod.LIMITS = py(Kin.LIMITS);
+    return mod;
+  }
+  let pythonReady = false;
+  function initPython() {
+    let evalOk = true;
+    try { new Function('return 1')(); } catch (e) { evalOk = false; }
+    if (!window.Sk || !Sk.builtinFiles || !evalOk) {
+      log('err', evalOk
+        ? 'Der Python-Interpreter konnte nicht geladen werden. Prüfe die Internetverbindung und lade die Seite neu.'
+        : 'Diese Umgebung erlaubt es nicht, Python-Code auszuführen (Sicherheitsrichtlinie der Seite). Die Achsen lassen sich weiter über die Regler bewegen.');
+      $('run').disabled = true;
+      return;
+    }
+    Sk.__robot = buildModule;
+    Sk.builtinFiles.files['src/lib/robot.js'] = 'var $builtinmodule = function (name) { return Sk.__robot(); };';
+    Sk.configure({
+      output: out,
+      read: (f) => { if (Sk.builtinFiles.files[f] === undefined) throw "File not found: '" + f + "'"; return Sk.builtinFiles.files[f]; },
+      __future__: Sk.python3,
+      yieldLimit: 40,
+    });
+    pythonReady = true;
+  }
+
+  function setRunning(on) {
+    S.running = on;
+    $('run').disabled = on || !pythonReady; $('stop').disabled = !on;
+    for (const id of ['examples', 'restore', 'teachJ', 'teachL', 'resetCell', 'shuffle']) $(id).disabled = on;
+    sliders.forEach((s) => { s.disabled = on; });
+  }
+  function onSuspend(r) {
+    if (S.stop) throw STOP;
+    let line = 0;
+    for (let s = r; s; s = s.child) if (s.$filename === '<stdin>.py') line = s.$lineno;
+    if (line) editor.mark('exec', line);
+  }
+  function reportError(e) {
+    let msg = String((e && e.message) || e), line = 0;
+    if (e && e.traceback) {
+      const tb = e.traceback.find((t) => t.filename === '<stdin>.py');
+      line = tb ? tb.lineno : 0;
+      msg = e.toString().replace(/ on line \d+$/, '');
+    }
+    log('err', line ? `Zeile ${line}: ${msg}` : msg);
+    const m = /name '(\w+)' is not defined/.exec(msg);
+    if (m && API_NAMES.includes(m[1])) log('info', 'Tipp: Steht „from robot import *“ am Anfang des Programms?');
+    if (/^SyntaxError/.test(msg)) log('info', 'Tipp: Der Fehler steckt in dieser oder der Zeile davor. Oft fehlt eine Klammer oder ein Doppelpunkt.');
+    if (line) editor.mark('err', line);
+    showTab('console');
+  }
+  async function runProgram() {
+    if (S.running || !pythonReady) return;
+    editor.clearMarks();
+    con.textContent = ''; outBuf = '';
+    if ($('autoreset').checked) resetCell(); else if (view) view.traceClear();
+    S.plot = []; S.simTime = 0; S.stop = false;
+    setRunning(true);
+    setJoints(S.q);
+    log('info', 'Programm gestartet');
+    try {
+      await Sk.misceval.asyncToPromise(() => Sk.importMainWithBody('<stdin>', false, editor.get(), true), { '*': onSuspend });
+      flushOut();
+      log('ok', `Programm beendet nach ${S.simTime.toFixed(1).replace('.', ',')} s Bewegungszeit`);
+    } catch (e) {
+      flushOut();
+      if (S.stop) log('warn', 'Programm gestoppt');
+      else reportError(e);
+    } finally {
+      if (S.plot.length) S.plot.push([S.simTime, ...S.q]);
+      S.motion = null;
+      setRunning(false);
+      settle();
+      editor.mark('exec', 0);
+      drawPlot();
+    }
+  }
+  function stopProgram() {
+    if (!S.running) return;
+    S.stop = true;
+    if (S.motion) { const m = S.motion; S.motion = null; m.reject(STOP); }
+  }
+
+  /* ---------- Verlauf der Gelenkwinkel ---------- */
+  $('legend').innerHTML = JCOL.map((c, i) => `<span><i style="background:${c}"></i>A${i + 1}</span>`).join('');
+  let plotDrawn = 0;
+  function drawPlot() {
+    const cv = $('plot');
+    if ($('plotpanel').hidden) return;
+    const w = cv.clientWidth, h = cv.clientHeight, data = S.plot;
+    $('plotempty').hidden = data.length > 1;
+    if (!w || !h) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    const g = cv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    plotDrawn = performance.now();
+    if (data.length < 2) return;
+    const L = 46, R = 8, T = 8, B = 22, pw = w - L - R, ph = h - T - B;
+    const tmax = Math.max(data[data.length - 1][0], 0.5);
+    let amax = 90;
+    for (const d of data) for (let j = 1; j < 7; j++) amax = Math.max(amax, Math.abs(d[j]));
+    const ystep = amax > 190 ? 180 : 90, ymax = Math.ceil(amax / ystep) * ystep;
+    const X = (t) => L + t / tmax * pw, Y = (v) => T + (1 - (v + ymax) / (2 * ymax)) * ph;
+    g.font = '11.5px ' + css('--mono'); g.fillStyle = css('--ink2'); g.strokeStyle = css('--line'); g.lineWidth = 1;
+    g.textAlign = 'right'; g.textBaseline = 'middle';
+    for (let v = -ymax; v <= ymax; v += ystep) {
+      g.globalAlpha = v === 0 ? 1 : 0.55;
+      g.beginPath(); g.moveTo(L, Math.round(Y(v)) + 0.5); g.lineTo(w - R, Math.round(Y(v)) + 0.5); g.stroke();
+      g.globalAlpha = 1;
+      g.fillText(v + '°', L - 6, Y(v));
+    }
+    const tstep = [0.5, 1, 2, 5, 10, 20, 30, 60, 120, 300].find((s) => tmax / s <= 8) || 600;
+    g.textAlign = 'center'; g.textBaseline = 'top';
+    for (let t = 0; t <= tmax + 1e-9; t += tstep) g.fillText(String(t).replace('.', ',') + ' s', X(t), h - B + 6);
+    const stride = Math.max(1, Math.floor(data.length / (pw * 2)));
+    g.lineWidth = 1.6; g.lineJoin = 'round';
+    for (let j = 0; j < 6; j++) {
+      g.strokeStyle = JCOL[j];
+      g.beginPath();
+      for (let i = 0; i < data.length; i += stride) { const d = data[i]; if (i) g.lineTo(X(d[0]), Y(d[j + 1])); else g.moveTo(X(d[0]), Y(d[j + 1])); }
+      const d = data[data.length - 1];
+      g.lineTo(X(d[0]), Y(d[j + 1]));
+      g.stroke();
+    }
+  }
+  new ResizeObserver(drawPlot).observe($('plot'));
+
+  /* ---------- Beispiele ---------- */
+  const EXAMPLES = [
+    { id: 'gelenke', title: 'Erste Bewegungen im Gelenkraum', code: `from robot import *
+
+# Gelenkwinkel A1 bis A6 in Grad
+moveJ([45, 0, 0, 0, 90, 0])
+moveJ([45, 30, 20, 0, 40, 0])
+moveJ([-45, 30, 20, 0, 40, 90], speed=100)
+
+print("Gelenkwinkel:", get_joints())
+print("TCP-Pose:    ", [round(v, 1) for v in get_tcp_pose()])
+
+home()
+` },
+    { id: 'ptp-lin', title: 'PTP und linear im Vergleich', code: `from robot import *
+
+# Orientierung [rx, ry, rz] in Grad: Werkzeug zeigt nach unten
+UNTEN = [180, 0, 0]
+# Positionen [x, y, z] in mm
+P1 = [450, -300, 200]
+P2 = [450, 300, 200]
+
+movePTP(P1, UNTEN)
+
+# PTP: alle Achsen fahren synchron, der TCP beschreibt einen Bogen
+movePTP(P2, UNTEN)
+
+# Linear: der TCP fährt auf einer Geraden zurück
+moveL(P1, UNTEN)
+
+home()
+
+# Die blaue TCP-Spur zeigt den Unterschied. Der Reiter
+# "Gelenkwinkel" zeigt, wie sich die Achsen dabei bewegen.
+` },
+    { id: 'pick', title: 'Pick and Place', code: `from robot import *
+
+UNTEN = [180, 0, 0]
+HOEHE = 150                        # sichere Höhe über dem Tisch in mm
+
+x, y, z = cube_position("rot")
+
+movePTP([x, y, HOEHE], UNTEN)      # über den Würfel
+moveL([x, y, z], UNTEN)            # absenken
+gripper_close()
+moveL([x, y, HOEHE], UNTEN)        # anheben
+
+ax, ay, az = ABLAGE
+movePTP([ax, ay, HOEHE], UNTEN)    # über das Ablagefeld
+moveL([ax, ay, az + 25], UNTEN)    # absetzen (halbe Kantenlänge)
+gripper_open()
+moveL([ax, ay, HOEHE], UNTEN)
+
+home()
+` },
+    { id: 'stapel', title: 'Würfel stapeln mit Schleife', code: `from robot import *
+
+UNTEN = [180, 0, 0]
+HOEHE = 220
+KANTE = 50                         # Kantenlänge der Würfel in mm
+
+def greifen(pos):
+    x, y, z = pos
+    movePTP([x, y, HOEHE], UNTEN)
+    moveL([x, y, z], UNTEN)
+    gripper_close()
+    moveL([x, y, HOEHE], UNTEN)
+
+def ablegen(pos):
+    x, y, z = pos
+    movePTP([x, y, HOEHE], UNTEN)
+    moveL([x, y, z], UNTEN, speed=120)
+    gripper_open()
+    moveL([x, y, HOEHE], UNTEN)
+
+ax, ay, az = ABLAGE
+for i, farbe in enumerate(["rot", "gruen", "blau"]):
+    greifen(cube_position(farbe))
+    ablegen([ax, ay, az + KANTE / 2 + i * KANTE])
+
+home()
+
+# Probier "Würfel mischen": Das Programm funktioniert weiter,
+# weil es die Positionen zur Laufzeit abfragt.
+` },
+    { id: 'dh', title: 'Eigene Vorwärtskinematik aus DH-Parametern', code: `from robot import *
+from math import sin, cos, radians
+
+def dh_matrix(theta, d, a, alpha):
+    ct, st = cos(radians(theta)), sin(radians(theta))
+    ca, sa = cos(radians(alpha)), sin(radians(alpha))
+    return [[ct, -st * ca,  st * sa, a * ct],
+            [st,  ct * ca, -ct * sa, a * st],
+            [0,   sa,       ca,      d],
+            [0,   0,        0,       1]]
+
+def matmul(A, B):
+    return [[sum([A[i][k] * B[k][j] for k in range(4)])
+             for j in range(4)] for i in range(4)]
+
+def vorwaertskinematik(q):
+    T = dh_matrix(0, 0, 0, 0)          # Einheitsmatrix
+    for winkel, (offset, d, a, alpha) in zip(q, DH):
+        T = matmul(T, dh_matrix(winkel + offset, d, a, alpha))
+    # Werkzeug: Der TCP liegt TOOL mm vor dem Flansch auf der z-Achse
+    return matmul(T, dh_matrix(0, TOOL, 0, 0))
+
+moveJ([30, 20, 10, 0, 60, 0])
+T = vorwaertskinematik(get_joints())
+
+print("Eigene Rechnung:", [round(T[i][3], 2) for i in range(3)])
+print("Steuerung:      ", [round(v, 2) for v in get_tcp_pose()[:3]])
+` },
+    { id: 'grenzen', title: 'Grenzen des Arbeitsraums', code: `from robot import *
+
+UNTEN = [180, 0, 0]
+ziele = [[500, 0, 300], [1200, 0, 300],
+         [300, 0, -50], [400, 150, 100]]
+
+for ziel in ziele:
+    try:
+        movePTP(ziel, UNTEN)
+        print(ziel, "erreicht")
+    except RobotError as fehler:
+        print(ziel, "nicht anfahrbar:", fehler)
+
+# Diese Gerade würde mitten durch den Roboterfuß führen
+try:
+    moveL([-400, -150, 100], UNTEN)
+except RobotError as fehler:
+    print("moveL abgebrochen:", fehler)
+
+home()
+` },
+  ];
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem('roboterzelle.' + k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('roboterzelle.' + k, JSON.stringify(v)); } catch (e) { /* Speicher nicht verfügbar */ } },
+  };
+  const drafts = store.get('drafts') || {};
+  let current = EXAMPLES.find((e) => e.id === store.get('example')) || EXAMPLES[0];
+  let loading = false;
+  const sel = $('examples');
+  EXAMPLES.forEach((e) => sel.add(new Option(e.title, e.id)));
+  function loadExample(ex, original) {
+    current = ex; sel.value = ex.id;
+    loading = true;
+    editor.set(!original && typeof drafts[ex.id] === 'string' ? drafts[ex.id] : ex.code);
+    loading = false;
+    editor.clearMarks();
+    store.set('example', ex.id);
+  }
+  editor.onChange(() => {
+    if (loading) return;
+    drafts[current.id] = editor.get();
+    store.set('drafts', drafts);
+    editor.mark('err', 0);
+  });
+  sel.addEventListener('change', () => loadExample(EXAMPLES.find((e) => e.id === sel.value)));
+  $('restore').addEventListener('click', () => { delete drafts[current.id]; store.set('drafts', drafts); loadExample(current, true); });
+
+  /* ---------- Verdrahtung und Start ---------- */
+  $('run').addEventListener('click', runProgram);
+  $('stop').addEventListener('click', stopProgram);
+  $('override').addEventListener('change', (e) => { S.override = +e.target.value; });
+  $('resetCell').addEventListener('click', resetCell);
+  $('shuffle').addEventListener('click', shuffle);
+  $('traceOn').addEventListener('change', (e) => { S.traceOn = e.target.checked; if (!S.traceOn && view) view.traceClear(); });
+  $('teachJ').addEventListener('click', () => editor.insertLine(`moveJ([${S.q.map(fmt).join(', ')}])`));
+  $('teachL').addEventListener('click', () => {
+    const p = Kin.tcpPose(S.q).map(fmt);
+    editor.insertLine(`moveL([${p.slice(0, 3).join(', ')}], [${p.slice(3).join(', ')}])`);
+  });
+  document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !e.defaultPrevented) { e.preventDefault(); runProgram(); } });
+
+  $('dhtable').innerHTML = '<tr><th>Gelenk</th><th>Theta-Offset</th><th>d in mm</th><th>a in mm</th><th>Alpha</th><th>Grenzen</th></tr>'
+    + Kin.DH.map((r, i) => `<tr><td>A${i + 1}</td><td>${r[0]}°</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}°</td><td>${Kin.LIMITS[i][0]}° bis ${Kin.LIMITS[i][1]}°</td></tr>`).join('');
+
+  view = initView();
+  hint();
+  initPython();
+  setRunning(false);
+  loadExample(current);
+  resetCell();
+
+  const onTheme = () => { if (view) view.applyTheme(); drawPlot(); };
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onTheme);
+  new MutationObserver(onTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(onTheme);
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    const m = S.motion;
+    if (m) {
+      m.t += dt * S.override; S.simTime += dt * S.override;
+      const tau = Math.min(1, m.t / m.T);
+      m.step(tau);
+      if (tau >= 1 && S.motion === m) { S.motion = null; m.resolve(); }
+      if (now - plotDrawn > 150) drawPlot();
+    }
+    if (view) view.render();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  window.__cell = { S, Kin, runProgram, stopProgram, editor }; // für Tests in der Browser-Konsole
+})();
+
+</script>
+</body>
+</html>
