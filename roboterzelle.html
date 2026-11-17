@@ -503,10 +503,10 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(380p
 <body>
 <header class="bar">
   <h1>Roboterzelle</h1>
-  <label>Beispiel
+  <label>Vorlage
     <select id="examples"></select>
   </label>
-  <button class="btn" id="restore" title="Verwirft deine Änderungen an diesem Beispiel">Beispielcode wiederherstellen</button>
+  <button class="btn" id="restore" title="Verwirft deine Änderungen an dieser Vorlage">Vorlage wiederherstellen</button>
   <span class="spacer"></span>
   <label>Tempo
     <select id="override">
@@ -1636,6 +1636,150 @@ except RobotError as fehler:
     print("moveL abgebrochen:", fehler)
 
 home()
+` },
+    { id: 'uebung-a', title: 'Übung A: Orientierung lesen', code: `from robot import *
+
+# Übung A: Orientierung lesen
+# 1. Berechne von Hand R = Rz(rz) * Ry(ry) * Rx(rx)
+#    für [rx, ry, rz] = [180, 0, 0].
+# 2. Die Spalten von R sind die Werkzeugachsen im Basissystem.
+#    Wohin zeigen x, y und z des Werkzeugs?
+# 3. Starte das Programm und vergleiche mit den TCP-Achsen
+#    in der 3D-Ansicht (x rot, y grün, z blau).
+
+movePTP([450, 0, 300], [180, 0, 0])
+print("TCP-Pose:", [round(v, 1) for v in get_tcp_pose()])
+
+# 4. Sage vorher, wohin die Achsen bei [180, 0, 90] zeigen.
+#    Entferne dann das Kommentarzeichen und prüfe es.
+# movePTP([450, 0, 300], [180, 0, 90])
+` },
+    { id: 'uebung-b', title: 'Übung B: Konvention der Steuerung finden', code: `from robot import *
+from math import sin, cos, radians
+
+# Übung B: Welche Konvention nutzt die Steuerung?
+
+def rot_x(a):
+    c, s = cos(radians(a)), sin(radians(a))
+    return [[1, 0, 0],
+            [0, c, -s],
+            [0, s, c]]
+
+def rot_y(b):
+    # TODO: Rotationsmatrix um die y-Achse (Folie 26)
+    return [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+
+def rot_z(g):
+    # TODO: Rotationsmatrix um die z-Achse (Folie 27)
+    return [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+
+def matmul(A, B):
+    return [[sum([A[i][k] * B[k][j] for k in range(3)])
+             for j in range(3)] for i in range(3)]
+
+def zeige(name, R):
+    print(name)
+    for zeile in R:
+        # "+ 0" macht aus einer gerundeten -0.0 eine 0.0
+        print("   ", [round(v, 3) + 0 for v in zeile])
+
+rx, ry, rz = 90, 0, 90
+movePTP([500, 0, 400], [rx, ry, rz])
+
+zeige("Variante 1: Rz * Ry * Rx",
+      matmul(rot_z(rz), matmul(rot_y(ry), rot_x(rx))))
+zeige("Variante 2: Rx * Ry * Rz",
+      matmul(rot_x(rx), matmul(rot_y(ry), rot_z(rz))))
+
+# Die dritte Spalte von R ist die z-Achse des Werkzeugs.
+# Vergleiche sie mit der blauen TCP-Achse: Welche Variante passt?
+` },
+    { id: 'uebung-c', title: 'Übung C: Bewegung in Werkzeugkoordinaten', code: `from robot import *
+from math import sin, cos, radians
+
+# Übung C: Bewegung in Werkzeugkoordinaten
+
+# TODO: Füge hier rot_x, rot_y, rot_z und matmul aus Übung B ein.
+
+def matvec(A, v):
+    return [sum([A[i][k] * v[k] for k in range(3)]) for i in range(3)]
+
+def move_tool(d, speed=100):
+    # Fährt den TCP linear um d = [dx, dy, dz] in Werkzeugkoordinaten
+    x, y, z, rx, ry, rz = get_tcp_pose()
+    # TODO: R aus rx, ry, rz berechnen (Reihenfolge aus Übung B)
+    R = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    v = matvec(R, d)
+    moveL([x + v[0], y + v[1], z + v[2]], speed=speed)
+
+# Teil 1: 80 mm entlang der Werkzeugachse fahren
+movePTP([450, 0, 300], [180, 30, 0])
+move_tool([0, 0, 80])
+print("Endpunkt:", [round(v, 1) for v in get_tcp_pose()[:3]])
+# Erwartet: [410.0, 0.0, 230.7]. Die Spur liegt auf der blauen Achse.
+
+# Teil 2: Wo liegt der rote Würfel im Werkzeugkoordinatensystem?
+#   p_werkzeug = R^T * (p_wuerfel - p_tcp)
+# TODO: p_werkzeug berechnen, dann die nächsten Zeilen aktivieren.
+# Liefert gripper_close() True, stimmt deine Rechnung.
+# move_tool(p_werkzeug)
+# print("Gegriffen:", gripper_close())
+` },
+    { id: 'uebung-d', title: 'Übung D: Mehrdeutige Winkel', code: `from robot import *
+
+# Übung D: Mehrdeutigkeit der Winkeldarstellung
+P = [500, 0, 400]
+
+for rpy in [[0, 90, 0], [90, 90, 90], [30, 90, 30]]:
+    movePTP(P, rpy)
+    print("Soll:", rpy)
+    print("   Ist:    ", [round(v, 1) for v in get_tcp_pose()[3:]])
+    print("   Gelenke:", [round(v, 1) for v in get_joints()])
+
+# 1. Warum bewegt sich der Roboter nach dem ersten Befehl nicht mehr?
+# 2. Setze ry = 90 Grad in die Matrix von Folie 30 ein.
+#    Von welcher Kombination aus rx und rz hängt R dann noch ab?
+# 3. Ergänze die Liste um ein weiteres Winkeltripel
+#    mit derselben Orientierung.
+` },
+    { id: 'uebung-e', title: 'Übung E: Von der Matrix zu den Winkeln', code: `from robot import *
+from math import sin, cos, radians, degrees, atan2, sqrt
+
+# Übung E: Von der Matrix zu den Winkeln
+# Die Vorwärtskinematik liefert die homogene Matrix T (Folie 33).
+# Gewinne daraus die Winkel [rx, ry, rz] zurück.
+
+def dh_matrix(theta, d, a, alpha):
+    ct, st = cos(radians(theta)), sin(radians(theta))
+    ca, sa = cos(radians(alpha)), sin(radians(alpha))
+    return [[ct, -st * ca,  st * sa, a * ct],
+            [st,  ct * ca, -ct * sa, a * st],
+            [0,   sa,       ca,      d],
+            [0,   0,        0,       1]]
+
+def matmul(A, B):
+    return [[sum([A[i][k] * B[k][j] for k in range(4)])
+             for j in range(4)] for i in range(4)]
+
+def vorwaertskinematik(q):
+    T = dh_matrix(0, 0, 0, 0)          # Einheitsmatrix
+    for winkel, (offset, d, a, alpha) in zip(q, DH):
+        T = matmul(T, dh_matrix(winkel + offset, d, a, alpha))
+    return matmul(T, dh_matrix(0, TOOL, 0, 0))
+
+def rpy_aus_matrix(T):
+    # TODO: Stelle die Matrix von Folie 30 nach den Winkeln um.
+    # Tipp: atan2(y, x) liefert den Winkel im richtigen Quadranten.
+    rx, ry, rz = 0, 0, 0
+    return [degrees(rx), degrees(ry), degrees(rz)]
+
+moveJ([30, 20, 10, 40, 60, -20])
+T = vorwaertskinematik(get_joints())
+print("Eigene Rechnung:", [round(v, 1) for v in rpy_aus_matrix(T)])
+print("Steuerung:      ", [round(v, 1) for v in get_tcp_pose()[3:]])
+
+# Zusatz: Wiederhole den Vergleich für moveJ([0, 0, 0, 0, 0, 0]).
+# Was fällt auf, und woran liegt es?
 ` },
   ];
   const store = {
