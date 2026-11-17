@@ -577,6 +577,8 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(380p
       <div class="actions">
         <button class="btn" id="teachJ" title="Fügt die aktuelle Stellung als Befehl in das Programm ein">Stellung als moveJ einfügen</button>
         <button class="btn" id="teachL" title="Fügt die aktuelle TCP-Pose als Befehl in das Programm ein">Pose als moveL einfügen</button>
+        <button class="btn" id="gripClose">Greifer schließen</button>
+        <button class="btn" id="gripOpen">Greifer öffnen</button>
         <span class="group"><button class="btn" id="resetCell">Zelle zurücksetzen</button>
         <label><input type="checkbox" id="autoreset" checked> vor jedem Programmstart</label></span>
         <span class="group"><button class="btn" id="shuffle">Würfel mischen</button>
@@ -1412,7 +1414,7 @@ if (typeof module !== 'undefined') module.exports = Kin;
   function setRunning(on) {
     S.running = on;
     $('run').disabled = on || !pythonReady; $('stop').disabled = !on;
-    for (const id of ['examples', 'restore', 'teachJ', 'teachL', 'resetCell', 'shuffle']) $(id).disabled = on;
+    for (const id of ['examples', 'restore', 'teachJ', 'teachL', 'gripClose', 'gripOpen', 'resetCell', 'shuffle']) $(id).disabled = on;
     sliders.forEach((s) => { s.disabled = on; });
   }
   function onSuspend(r) {
@@ -1824,6 +1826,16 @@ print("Steuerung:      ", [round(v, 1) for v in get_tcp_pose()[3:]])
   $('override').addEventListener('change', (e) => { S.override = +e.target.value; });
   $('resetCell').addEventListener('click', resetCell);
   $('shuffle').addEventListener('click', shuffle);
+  // Greifer von Hand bedienen, solange kein Programm und keine andere Bewegung läuft
+  const manualGrip = (close) => {
+    if (S.running || S.motion) return;
+    S.stop = false;
+    (close ? cell.gripClose() : cell.gripOpen()).then((got) => {
+      if (close && !got) hint('Kein Würfel gegriffen: Der TCP muss höchstens 20 mm vom Würfelmittelpunkt entfernt sein.');
+    }, () => {});
+  };
+  $('gripClose').addEventListener('click', () => manualGrip(true));
+  $('gripOpen').addEventListener('click', () => manualGrip(false));
   $('traceOn').addEventListener('change', (e) => { S.traceOn = e.target.checked; if (!S.traceOn && view) view.traceClear(); });
   $('teachJ').addEventListener('click', () => editor.insertLine(`moveJ([${S.q.map(fmt).join(', ')}])`));
   $('teachL').addEventListener('click', () => {
