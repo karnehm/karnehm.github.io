@@ -549,6 +549,7 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(380p
           <tr><td><code>gripper_close()</code></td><td>Schließt den Greifer. Liefert <code>True</code>, wenn ein Würfel gegriffen wurde. Dafür muss der TCP höchstens 20 mm vom Würfelmittelpunkt entfernt sein.</td></tr>
           <tr><td><code>gripper_open()</code></td><td>Öffnet den Greifer. Ein gehaltener Würfel fällt senkrecht auf den Tisch oder auf einen Würfel darunter.</td></tr>
           <tr><td><code>cube_position(farbe)</code></td><td>Mittelpunkt des Würfels <code>"rot"</code>, <code>"gruen"</code> oder <code>"blau"</code> als <code>[x, y, z]</code> in mm. Kantenlänge 50 mm.</td></tr>
+          <tr><td><code>cube_rotation(farbe)</code></td><td>Orientierung des Würfels im Basiskoordinatensystem als <code>[rx, ry, rz]</code> in Grad, in derselben Konvention wie <code>get_tcp_pose()</code>. Liegt der Würfel auf dem Tisch, ist nur <code>rz</code> von null verschieden. Gedrehte Würfel entstehen über „Würfel mischen“ mit dem Haken „mit zufälliger Drehung“.</td></tr>
           <tr><td><code>ABLAGE</code></td><td>Mitte des markierten Ablagefelds auf dem Tisch, <code>[250, -400, 0]</code>.</td></tr>
         </table>
         <h2>Zustand abfragen</h2>
@@ -578,7 +579,8 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(380p
         <button class="btn" id="teachL" title="Fügt die aktuelle TCP-Pose als Befehl in das Programm ein">Pose als moveL einfügen</button>
         <span class="group"><button class="btn" id="resetCell">Zelle zurücksetzen</button>
         <label><input type="checkbox" id="autoreset" checked> vor jedem Programmstart</label></span>
-        <button class="btn" id="shuffle">Würfel mischen</button>
+        <span class="group"><button class="btn" id="shuffle">Würfel mischen</button>
+        <label><input type="checkbox" id="rotOn"> mit zufälliger Drehung</label></span>
         <label><input type="checkbox" id="traceOn" checked> TCP-Spur zeichnen</label>
       </div>
     </div>
@@ -1305,7 +1307,7 @@ if (typeof module !== 'undefined') module.exports = Kin;
   };
   function resetCell() {
     S.q = Kin.HOME.slice(); S.gap = GAP_OPEN; S.held = null;
-    S.cubes = S.layout.map((c) => ({ name: c.name, T: poseZ(c.x, c.y, HALF, 0) }));
+    S.cubes = S.layout.map((c) => ({ name: c.name, T: poseZ(c.x, c.y, HALF, c.yaw || 0) }));
     if (view) view.traceClear();
     refresh();
   }
@@ -1317,14 +1319,16 @@ if (typeof module !== 'undefined') module.exports = Kin;
         const r = 380 + Math.random() * 240, a = (-20 + Math.random() * 120) * Math.PI / 180;
         x = Math.round(r * Math.cos(a)); y = Math.round(r * Math.sin(a));
       } while (!placed.every((o) => Math.hypot(o.x - x, o.y - y) > 110) && ++tries < 300);
-      placed.push({ name: c.name, x, y });
+      // Drehung um die Hochachse; ein Würfel sieht alle 90 Grad gleich aus, daher genügen -45 bis 45 Grad
+      const yaw = $('rotOn').checked ? Math.round(-45 + Math.random() * 90) * Math.PI / 180 : 0;
+      placed.push({ name: c.name, x, y, yaw });
     }
     S.layout = placed;
     resetCell();
   }
 
   /* ---------- Python (Skulpt): Modul „robot“ ---------- */
-  const API_NAMES = ['moveJ', 'movePTP', 'moveL', 'home', 'wait', 'gripper_close', 'gripper_open', 'get_joints', 'get_tcp_pose', 'cube_position', 'ABLAGE', 'HOME', 'DH', 'TOOL', 'LIMITS', 'RobotError'];
+  const API_NAMES = ['moveJ', 'movePTP', 'moveL', 'home', 'wait', 'gripper_close', 'gripper_open', 'get_joints', 'get_tcp_pose', 'cube_position', 'cube_rotation', 'ABLAGE', 'HOME', 'DH', 'TOOL', 'LIMITS', 'RobotError'];
   function buildModule() {
     const mod = {}, py = Sk.ffi.remapToPy, js = Sk.ffi.remapToJs, none = Sk.builtin.none.none$;
     mod.RobotError = Sk.misceval.buildClass(mod, function () {}, 'RobotError', [Sk.builtin.Exception]);
@@ -1373,6 +1377,12 @@ if (typeof module !== 'undefined') module.exports = Kin;
       const c = S.cubes.find((k) => k.name === name);
       if (!c) throw new Sk.builtin.ValueError('cube_position: Es gibt die Würfel "rot", "gruen" und "blau"');
       return py([c.T[3], c.T[7], c.T[11]].map(clean));
+    });
+    def('cube_rotation', ['farbe'], [], (farbe) => {
+      const name = String(js(farbe)).toLowerCase().replace('ü', 'ue');
+      const c = S.cubes.find((k) => k.name === name);
+      if (!c) throw new Sk.builtin.ValueError('cube_rotation: Es gibt die Würfel "rot", "gruen" und "blau"');
+      return py(Kin.matToRpy(c.T).map(clean));
     });
     mod.ABLAGE = py(ABLAGE); mod.HOME = py(Kin.HOME); mod.DH = py(Kin.DH); mod.TOOL = py(Kin.TOOL); mod.LIMITS = py(Kin.LIMITS);
     return mod;
